@@ -14,78 +14,76 @@ class ProfileScreen extends ConsumerWidget {
       backgroundColor: AppColors.bgPrimary,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Left column — fully static, no reactive state
-            const Expanded(
-              child: Column(
-                children: [
-                  _ProfileCard(),
-                  SizedBox(height: 16),
-                  _SubscriptionCard(),
-                  SizedBox(height: 16),
-                  _ExchangeConnections(),
-                ],
+        child: LayoutBuilder(builder: (_, c) {
+          const leftColumn = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ProfileCard(),
+              SizedBox(height: 16),
+              _SubscriptionCard(),
+              SizedBox(height: 16),
+              _ExchangeConnections(),
+            ],
+          );
+
+          final rightColumn = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Consumer(
+                builder: (_, ref, __) {
+                  final darkMode = ref.watch(profileProvider.select((n) => n.darkMode));
+                  final notifications = ref.watch(profileProvider.select((n) => n.notifications));
+                  return _SettingsCard(
+                    darkMode: darkMode,
+                    notifications: notifications,
+                    onDarkChanged: (v) => ref.read(profileProvider).setDarkMode(v),
+                    onNotifChanged: (v) => ref.read(profileProvider).setNotifications(v),
+                  );
+                },
               ),
-            ),
-            const SizedBox(width: 16),
-            // Right column — each card has its own Consumer, rebuilds independently
-            Expanded(
-              child: Column(
-                children: [
-                  // Rebuilds only when darkMode or notifications changes
-                  Consumer(
-                    builder: (_, ref, __) {
-                      final darkMode = ref.watch(
-                        profileProvider.select((n) => n.darkMode),
-                      );
-                      final notifications = ref.watch(
-                        profileProvider.select((n) => n.notifications),
-                      );
-                      return _SettingsCard(
-                        darkMode: darkMode,
-                        notifications: notifications,
-                        onDarkChanged: (v) =>
-                            ref.read(profileProvider).setDarkMode(v),
-                        onNotifChanged: (v) =>
-                            ref.read(profileProvider).setNotifications(v),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  // Rebuilds only when twoFA changes
-                  Consumer(
-                    builder: (_, ref, __) {
-                      final twoFA = ref.watch(
-                        profileProvider.select((n) => n.twoFA),
-                      );
-                      return _SecurityCard(
-                        twoFA: twoFA,
-                        onTwoFAChanged: (v) =>
-                            ref.read(profileProvider).setTwoFA(v),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  // Rebuilds only when aiPersonality changes
-                  Consumer(
-                    builder: (_, ref, __) {
-                      final personality = ref.watch(
-                        profileProvider.select((n) => n.aiPersonality),
-                      );
-                      return _AiPersonalizationCard(
-                        personality: personality,
-                        onChanged: (v) =>
-                            ref.read(profileProvider).setAiPersonality(v),
-                      );
-                    },
-                  ),
-                ],
+              const SizedBox(height: 16),
+              Consumer(
+                builder: (_, ref, __) {
+                  final twoFA = ref.watch(profileProvider.select((n) => n.twoFA));
+                  return _SecurityCard(
+                    twoFA: twoFA,
+                    onTwoFAChanged: (v) => ref.read(profileProvider).setTwoFA(v),
+                  );
+                },
               ),
-            ),
-          ],
-        ),
+              const SizedBox(height: 16),
+              Consumer(
+                builder: (_, ref, __) {
+                  final personality = ref.watch(profileProvider.select((n) => n.aiPersonality));
+                  return _AiPersonalizationCard(
+                    personality: personality,
+                    onChanged: (v) => ref.read(profileProvider).setAiPersonality(v),
+                  );
+                },
+              ),
+            ],
+          );
+
+          if (c.maxWidth < 700) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                leftColumn,
+                const SizedBox(height: 16),
+                rightColumn,
+              ],
+            );
+          }
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: leftColumn),
+              const SizedBox(width: 16),
+              Expanded(child: rightColumn),
+            ],
+          );
+        }),
       ),
     );
   }

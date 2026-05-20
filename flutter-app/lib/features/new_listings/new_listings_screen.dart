@@ -1,18 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../providers/new_listings_provider.dart';
+import '../../providers/ai_analysis_provider.dart';
 
 const _filters = ['All', 'AI', 'Meme', 'DeFi', 'Gaming', 'RWA'];
 
-// Screen is stateless — ChangeNotifierProvider.autoDispose handles lifecycle
-class NewListingsScreen extends ConsumerWidget {
+class NewListingsScreen extends ConsumerStatefulWidget {
   const NewListingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Outer build is static — no ref.watch here, only Consumer inside
+  ConsumerState<NewListingsScreen> createState() => _NewListingsScreenState();
+}
+
+class _NewListingsScreenState extends ConsumerState<NewListingsScreen> {
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: CustomScrollView(
@@ -25,6 +39,44 @@ class NewListingsScreen extends ConsumerWidget {
                 children: [
                   const _Header(),
                   const SizedBox(height: 16),
+                  // Search bar
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.bgCard,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.borderSubtle),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search_rounded, size: 16, color: AppColors.textMuted),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            style: const TextStyle(fontSize: 13, color: Colors.white),
+                            onChanged: (v) => setState(() => _searchQuery = v),
+                            decoration: const InputDecoration(
+                              hintText: 'Search by name or symbol...',
+                              hintStyle: TextStyle(color: AppColors.textDisabled, fontSize: 13),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ),
+                        if (_searchQuery.isNotEmpty)
+                          GestureDetector(
+                            onTap: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                            child: const Icon(Icons.close_rounded, size: 16, color: AppColors.textMuted),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   // Only filter row rebuilds when filter changes
                   Consumer(
                     builder: (_, ref, __) {
@@ -44,22 +96,52 @@ class NewListingsScreen extends ConsumerWidget {
               ),
             ),
           ),
-          // Only sliver list rebuilds when filter changes
+          // List rebuilds when filter OR search changes
           Consumer(
             builder: (_, ref, __) {
               final filter = ref.watch(
                 newListingsProvider.select((n) => n.filter),
               );
-              final filtered = filter == 'All'
+              var filtered = filter == 'All'
                   ? _listings
                   : _listings.where((l) => l.narrative == filter).toList();
+
+              if (_searchQuery.isNotEmpty) {
+                final q = _searchQuery.toLowerCase();
+                filtered = filtered.where((l) =>
+                  l.symbol.toLowerCase().contains(q) ||
+                  l.name.toLowerCase().contains(q) ||
+                  l.narrative.toLowerCase().contains(q)
+                ).toList();
+              }
+
+              if (filtered.isEmpty) {
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                    child: Center(
+                      child: Text(
+                        'No listings found for "$_searchQuery"',
+                        style: const TextStyle(fontSize: 14, color: AppColors.textMuted),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
               return SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (_, i) => Padding(
                       padding: const EdgeInsets.only(bottom: 12),
-                      child: _ListingCard(listing: filtered[i]),
+                      child: _ListingCard(
+                        listing: filtered[i],
+                        onTap: () {
+                          ref.read(aiAnalysisProvider).selectCoin(filtered[i].symbol);
+                          context.go('/analysis');
+                        },
+                      ),
                     ),
                     childCount: filtered.length,
                   ),
@@ -211,7 +293,8 @@ class _FilterRow extends StatelessWidget {
 
 class _ListingCard extends StatelessWidget {
   final _Listing listing;
-  const _ListingCard({super.key, required this.listing});
+  final VoidCallback? onTap;
+  const _ListingCard({super.key, required this.listing, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -230,6 +313,7 @@ class _ListingCard extends StatelessWidget {
     };
 
     return GlassCard(
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'dart:math' as math;
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
+import '../../core/widgets/coin_selector.dart';
 import '../../providers/charts_provider.dart';
 
 const _timeframes = ['1m', '5m', '15m', '1H', '4H', '1D', '1W'];
@@ -38,12 +39,18 @@ List<Candle> _buildCandles() {
 
 final _candles = _buildCandles();
 
-// Outer build is static — no direct ref.watch, only Consumer inside
-class ChartsScreen extends ConsumerWidget {
+class ChartsScreen extends ConsumerStatefulWidget {
   const ChartsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChartsScreen> createState() => _ChartsScreenState();
+}
+
+class _ChartsScreenState extends ConsumerState<ChartsScreen> {
+  String _selectedCoin = 'BTC';
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: Padding(
@@ -51,11 +58,13 @@ class ChartsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header rebuilds when timeframe OR indicator changes
+            // Coin selector + timeframe header
             Consumer(
               builder: (_, ref, __) {
                 final n = ref.watch(chartsProvider);
                 return _ChartHeader(
+                  selectedCoin: _selectedCoin,
+                  onCoinChanged: (c) => setState(() => _selectedCoin = c),
                   timeframe: n.timeframe,
                   timeframes: _timeframes,
                   onTimeframeChanged: (t) => ref.read(chartsProvider).setTimeframe(t),
@@ -102,6 +111,8 @@ class ChartsScreen extends ConsumerWidget {
 }
 
 class _ChartHeader extends StatelessWidget {
+  final String selectedCoin;
+  final ValueChanged<String> onCoinChanged;
   final String timeframe;
   final List<String> timeframes;
   final ValueChanged<String> onTimeframeChanged;
@@ -110,6 +121,8 @@ class _ChartHeader extends StatelessWidget {
   final ValueChanged<String> onIndicatorChanged;
 
   const _ChartHeader({
+    required this.selectedCoin,
+    required this.onCoinChanged,
     required this.timeframe,
     required this.timeframes,
     required this.onTimeframeChanged,
@@ -118,51 +131,58 @@ class _ChartHeader extends StatelessWidget {
     required this.onIndicatorChanged,
   });
 
+  Widget _timeframeButtons() => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: timeframes.map((t) => GestureDetector(
+      onTap: () => onTimeframeChanged(t),
+      child: Container(
+        margin: const EdgeInsets.only(left: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: timeframe == t ? AppColors.brandGreen.withAlpha(20) : AppColors.bgCard,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: timeframe == t
+                ? AppColors.brandGreen.withAlpha(60)
+                : AppColors.borderSubtle,
+          ),
+        ),
+        child: Text(t, style: TextStyle(
+          fontSize: 11, fontWeight: FontWeight.w600,
+          color: timeframe == t ? AppColors.brandGreen : AppColors.textMuted,
+        )),
+      ),
+    )).toList(),
+  );
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Column(
+    return LayoutBuilder(builder: (_, c) {
+      final isMobile = c.maxWidth < 700;
+      final coinSelector = CoinSelector(selected: selectedCoin, onChanged: onCoinChanged);
+
+      if (isMobile) {
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('BTC/USDT', style: TextStyle(
-              fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white,
-            )),
-            Row(children: [
-              Text('\$97,420.00', style: TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w700,
-                color: AppColors.brandGreen, fontFamily: 'JetBrainsMono',
-              )),
-              SizedBox(width: 8),
-              Text('+2.4% (24h)', style: TextStyle(
-                fontSize: 12, color: AppColors.brandGreen,
-              )),
-            ]),
-          ],
-        ),
-        const Spacer(),
-        ...timeframes.map((t) => GestureDetector(
-          onTap: () => onTimeframeChanged(t),
-          child: Container(
-            margin: const EdgeInsets.only(left: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: timeframe == t ? AppColors.brandGreen.withAlpha(20) : AppColors.bgCard,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: timeframe == t
-                    ? AppColors.brandGreen.withAlpha(60)
-                    : AppColors.borderSubtle,
-              ),
+            coinSelector,
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: _timeframeButtons(),
             ),
-            child: Text(t, style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w600,
-              color: timeframe == t ? AppColors.brandGreen : AppColors.textMuted,
-            )),
-          ),
-        )),
-      ],
-    );
+          ],
+        );
+      }
+
+      return Row(
+        children: [
+          Expanded(flex: 2, child: coinSelector),
+          const SizedBox(width: 16),
+          _timeframeButtons(),
+        ],
+      );
+    });
   }
 }
 
@@ -178,14 +198,23 @@ class _ChartToolbar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _ToolBtn(Icons.show_chart_rounded, 'Line'),
-          _ToolBtn(Icons.candlestick_chart_rounded, 'Candle', active: true),
-          _ToolBtn(Icons.bar_chart_rounded, 'Bar'),
-          const SizedBox(width: 16),
-          _ToolBtn(Icons.draw_rounded, 'Draw'),
-          _ToolBtn(Icons.horizontal_rule_rounded, 'Trend'),
-          _ToolBtn(Icons.grid_on_rounded, 'Fib'),
-          const Spacer(),
+          // Left tool buttons — scroll horizontally if screen is narrow
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _ToolBtn(Icons.show_chart_rounded, 'Line'),
+                  _ToolBtn(Icons.candlestick_chart_rounded, 'Candle', active: true),
+                  _ToolBtn(Icons.bar_chart_rounded, 'Bar'),
+                  const SizedBox(width: 16),
+                  _ToolBtn(Icons.draw_rounded, 'Draw'),
+                  _ToolBtn(Icons.horizontal_rule_rounded, 'Trend'),
+                  _ToolBtn(Icons.grid_on_rounded, 'Fib'),
+                ],
+              ),
+            ),
+          ),
           NeonBadge(
             label: 'AI Overlay ON',
             color: AppColors.brandGreen,

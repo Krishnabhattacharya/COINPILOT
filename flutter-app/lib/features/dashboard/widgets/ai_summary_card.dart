@@ -4,7 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../../providers/ai_summary_provider.dart';
 
-// Outer card frame is static — only the typewriter text rebuilds every 20ms
+// Outer card frame is static — only the typewriter text rebuilds every 18ms
 class AiSummaryCard extends ConsumerWidget {
   const AiSummaryCard({super.key});
 
@@ -15,24 +15,18 @@ class AiSummaryCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header row — never rebuilds
           Row(
             children: [
               Container(
                 width: 8, height: 8,
                 decoration: const BoxDecoration(
-                  color: AppColors.brandGreen,
-                  shape: BoxShape.circle,
-                ),
+                  color: AppColors.brandGreen, shape: BoxShape.circle),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'AI Market Summary',
+              const Text('AI Market Summary',
                 style: TextStyle(
                   fontSize: 11, fontWeight: FontWeight.w500,
-                  color: AppColors.textMuted, letterSpacing: 0.5,
-                ),
-              ),
+                  color: AppColors.textMuted, letterSpacing: 0.5)),
               const Spacer(),
               NeonBadge(label: 'GPT-4', color: AppColors.brandPurple),
             ],
@@ -50,23 +44,22 @@ class AiSummaryCard extends ConsumerWidget {
                 child: const Icon(Icons.bolt_rounded, color: Colors.black, size: 16),
               ),
               const SizedBox(width: 12),
-              // Only this Consumer rebuilds every 20ms — icon and card frame stay stable
+              // Only this Consumer rebuilds on each typewriter tick
               Expanded(
                 child: Consumer(
                   builder: (_, ref, __) {
                     final charCount = ref.watch(
-                      aiSummaryProvider.select((n) => n.charCount),
-                    );
+                      aiSummaryProvider.select((n) => n.charCount));
                     final isTyping = ref.watch(
-                      aiSummaryProvider.select((n) => n.isTyping),
-                    );
+                      aiSummaryProvider.select((n) => n.isTyping));
+                    final fullText = ref.read(aiSummaryProvider).fullText;
+                    final safe = charCount.clamp(0, fullText.length);
                     return RichText(
                       text: TextSpan(
-                        text: AiSummaryNotifier.fullText.substring(0, charCount),
+                        text: fullText.substring(0, safe),
                         style: const TextStyle(
                           fontSize: 13, color: Color(0xCCFFFFFF),
-                          height: 1.6, fontFamily: 'Inter',
-                        ),
+                          height: 1.6, fontFamily: 'Inter'),
                         children: [
                           if (isTyping) const WidgetSpan(child: _Cursor()),
                         ],
@@ -80,7 +73,6 @@ class AiSummaryCard extends ConsumerWidget {
           const SizedBox(height: 16),
           const Divider(color: AppColors.borderSubtle, height: 1),
           const SizedBox(height: 12),
-          // Footer sentiment chips — never rebuild
           Row(
             children: [
               _SentimentChip('Bullish', 74, AppColors.brandGreen),
@@ -93,10 +85,9 @@ class AiSummaryCard extends ConsumerWidget {
                 onTap: () {},
                 child: const Row(
                   children: [
-                    Text('Ask AI', style: TextStyle(
-                      fontSize: 12, color: AppColors.brandGreen,
-                      fontWeight: FontWeight.w600,
-                    )),
+                    Text('Ask AI',
+                      style: TextStyle(fontSize: 12, color: AppColors.brandGreen,
+                        fontWeight: FontWeight.w600)),
                     SizedBox(width: 4),
                     Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.brandGreen),
                   ],
@@ -110,10 +101,8 @@ class AiSummaryCard extends ConsumerWidget {
   }
 }
 
-// Must stay StatefulWidget — uses AnimationController with TickerProvider
 class _Cursor extends StatefulWidget {
   const _Cursor();
-
   @override
   State<_Cursor> createState() => _CursorState();
 }
@@ -168,10 +157,8 @@ class _SentimentChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withAlpha(40)),
       ),
-      child: Text(
-        '$label $percent%',
-        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
-      ),
+      child: Text('$label $percent%',
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color)),
     );
   }
 }

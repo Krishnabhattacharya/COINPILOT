@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
+import '../../providers/dashboard_provider.dart';
+import '../../providers/ai_summary_provider.dart';
 import 'widgets/market_overview_card.dart';
 import 'widgets/fear_greed_widget.dart';
 import 'widgets/funding_rate_panel.dart';
@@ -9,11 +12,19 @@ import 'widgets/ai_summary_card.dart';
 import 'widgets/portfolio_overview.dart';
 import 'widgets/trending_coins.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Feed live AI summary text into the typewriter animation when data arrives
+    ref.listen(dashboardSummaryProvider, (_, next) {
+      next.whenData((summary) {
+        if (summary.aiSummary.isNotEmpty) {
+          ref.read(aiSummaryProvider).setText(summary.aiSummary);
+        }
+      });
+    });
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: CustomScrollView(
@@ -36,38 +47,74 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 20),
 
                 // AI Summary + Fear & Greed
-                const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 3, child: AiSummaryCard()),
-                    SizedBox(width: 16),
-                    Expanded(flex: 2, child: FearGreedWidget()),
-                  ],
-                ),
+                LayoutBuilder(builder: (_, c) {
+                  if (c.maxWidth < 700) {
+                    return const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AiSummaryCard(),
+                        SizedBox(height: 16),
+                        FearGreedWidget(),
+                      ],
+                    );
+                  }
+                  return const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: AiSummaryCard()),
+                      SizedBox(width: 16),
+                      Expanded(flex: 2, child: FearGreedWidget()),
+                    ],
+                  );
+                }),
                 const SizedBox(height: 20),
 
                 // Funding + Portfolio
-                const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: FundingRatePanel()),
-                    SizedBox(width: 16),
-                    Expanded(child: PortfolioOverview()),
-                  ],
-                ),
+                LayoutBuilder(builder: (_, c) {
+                  if (c.maxWidth < 700) {
+                    return const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FundingRatePanel(),
+                        SizedBox(height: 16),
+                        PortfolioOverview(),
+                      ],
+                    );
+                  }
+                  return const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: FundingRatePanel()),
+                      SizedBox(width: 16),
+                      Expanded(child: PortfolioOverview()),
+                    ],
+                  );
+                }),
                 const SizedBox(height: 20),
 
                 // Trending + Whale Alerts
                 const SectionHeader(title: 'Trending & Whale Activity'),
                 const SizedBox(height: 12),
-                const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: TrendingCoins()),
-                    SizedBox(width: 16),
-                    Expanded(child: WhaleAlerts()),
-                  ],
-                ),
+                LayoutBuilder(builder: (_, c) {
+                  if (c.maxWidth < 700) {
+                    return const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TrendingCoins(),
+                        SizedBox(height: 16),
+                        WhaleAlerts(),
+                      ],
+                    );
+                  }
+                  return const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: TrendingCoins()),
+                      SizedBox(width: 16),
+                      Expanded(child: WhaleAlerts()),
+                    ],
+                  );
+                }),
                 const SizedBox(height: 40),
               ]),
             ),
