@@ -1,52 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/glass_card.dart';
+import '../../../providers/ai_summary_provider.dart';
 
-class AiSummaryCard extends StatefulWidget {
+// Outer card frame is static — only the typewriter text rebuilds every 20ms
+class AiSummaryCard extends ConsumerWidget {
   const AiSummaryCard({super.key});
 
   @override
-  State<AiSummaryCard> createState() => _AiSummaryCardState();
-}
-
-class _AiSummaryCardState extends State<AiSummaryCard> {
-  static const _fullText =
-      'BTC is showing strong bullish momentum. RSI at 67 — not yet overbought. Key resistance at \$98.4K. '
-      'Funding rates remain neutral. ETF inflows are positive for the 3rd consecutive day. '
-      'Consider scaling positions on pullbacks to the \$95K support zone. '
-      'Watch for a possible liquidity sweep below \$96K before continuation.';
-
-  int _charCount = 0;
-  bool _isTyping = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _startTyping();
-  }
-
-  void _startTyping() {
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(milliseconds: 20));
-      if (!mounted) return false;
-      setState(() {
-        if (_charCount < _fullText.length) {
-          _charCount++;
-        } else {
-          _isTyping = false;
-        }
-      });
-      return _charCount < _fullText.length;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GlassCard(
       borderColor: AppColors.brandGreen.withAlpha(40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header row — never rebuilds
           Row(
             children: [
               Container(
@@ -60,10 +29,8 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
               const Text(
                 'AI Market Summary',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textMuted,
-                  letterSpacing: 0.5,
+                  fontSize: 11, fontWeight: FontWeight.w500,
+                  color: AppColors.textMuted, letterSpacing: 0.5,
                 ),
               ),
               const Spacer(),
@@ -71,7 +38,6 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
             ],
           ),
           const SizedBox(height: 16),
-
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -84,32 +50,37 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
                 child: const Icon(Icons.bolt_rounded, color: Colors.black, size: 16),
               ),
               const SizedBox(width: 12),
+              // Only this Consumer rebuilds every 20ms — icon and card frame stay stable
               Expanded(
-                child: RichText(
-                  text: TextSpan(
-                    text: _fullText.substring(0, _charCount),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xCCFFFFFF),
-                      height: 1.6,
-                      fontFamily: 'Inter',
-                    ),
-                    children: [
-                      if (_isTyping)
-                        const WidgetSpan(
-                          child: _Cursor(),
+                child: Consumer(
+                  builder: (_, ref, __) {
+                    final charCount = ref.watch(
+                      aiSummaryProvider.select((n) => n.charCount),
+                    );
+                    final isTyping = ref.watch(
+                      aiSummaryProvider.select((n) => n.isTyping),
+                    );
+                    return RichText(
+                      text: TextSpan(
+                        text: AiSummaryNotifier.fullText.substring(0, charCount),
+                        style: const TextStyle(
+                          fontSize: 13, color: Color(0xCCFFFFFF),
+                          height: 1.6, fontFamily: 'Inter',
                         ),
-                    ],
-                  ),
+                        children: [
+                          if (isTyping) const WidgetSpan(child: _Cursor()),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
           ),
-
           const SizedBox(height: 16),
           const Divider(color: AppColors.borderSubtle, height: 1),
           const SizedBox(height: 12),
-
+          // Footer sentiment chips — never rebuild
           Row(
             children: [
               _SentimentChip('Bullish', 74, AppColors.brandGreen),
@@ -123,7 +94,8 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
                 child: const Row(
                   children: [
                     Text('Ask AI', style: TextStyle(
-                      fontSize: 12, color: AppColors.brandGreen, fontWeight: FontWeight.w600,
+                      fontSize: 12, color: AppColors.brandGreen,
+                      fontWeight: FontWeight.w600,
                     )),
                     SizedBox(width: 4),
                     Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.brandGreen),
@@ -138,6 +110,7 @@ class _AiSummaryCardState extends State<AiSummaryCard> {
   }
 }
 
+// Must stay StatefulWidget — uses AnimationController with TickerProvider
 class _Cursor extends StatefulWidget {
   const _Cursor();
 
@@ -151,11 +124,15 @@ class _CursorState extends State<_Cursor> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..repeat(reverse: true);
+    _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))
+      ..repeat(reverse: true);
   }
 
   @override
-  void dispose() { _c.dispose(); super.dispose(); }
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -193,11 +170,7 @@ class _SentimentChip extends StatelessWidget {
       ),
       child: Text(
         '$label $percent%',
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
       ),
     );
   }

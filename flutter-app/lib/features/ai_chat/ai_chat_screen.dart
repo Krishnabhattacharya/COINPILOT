@@ -1,27 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
+import '../../providers/ai_chat_provider.dart';
 
-class AiChatScreen extends StatefulWidget {
+// Outer build is static — _ChatHeader and _SuggestedPanel never rebuild
+class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
 
   @override
-  State<AiChatScreen> createState() => _AiChatScreenState();
+  ConsumerState<AiChatScreen> createState() => _AiChatScreenState();
 }
 
-class _AiChatScreenState extends State<AiChatScreen> {
+class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  final _messages = <_Message>[
-    _Message(
-      text: 'Hello! I\'m your AI Trading Copilot. I have access to real-time market data, '
-          'historical patterns, and current news. How can I help you trade smarter today?',
-      isUser: false,
-    ),
-  ];
-  bool _isTyping = false;
 
-  final _suggested = [
+  static const _suggested = [
     'What is BTC doing right now?',
     'Is now a good time to buy ETH?',
     'Explain the current funding rates',
@@ -30,46 +25,18 @@ class _AiChatScreenState extends State<AiChatScreen> {
     'Is the market in a bull or bear phase?',
   ];
 
-  void _sendMessage(String text) {
-    if (text.trim().isEmpty) return;
-    setState(() {
-      _messages.add(_Message(text: text, isUser: true));
-      _isTyping = true;
-    });
+  void _send(String text) {
+    ref.read(aiChatProvider).send(text);
     _controller.clear();
-
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _isTyping = false;
-          _messages.add(_Message(
-            text: _getResponse(text),
-            isUser: false,
-          ));
-        });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
       }
     });
-  }
-
-  String _getResponse(String query) {
-    if (query.toLowerCase().contains('btc') || query.toLowerCase().contains('bitcoin')) {
-      return 'Based on current data: BTC is trading at \$97,420 (+2.4%). '
-          'The RSI sits at 67 — bullish but not overbought. '
-          'Key resistance at \$98,400–\$100,000. Support at \$95,800. '
-          'Funding rates are neutral at +0.023%. '
-          'My AI analysis suggests a 74% bullish sentiment across all sources. '
-          'The market memory engine shows 87% similarity to October 2024 pre-ATH conditions.';
-    }
-    if (query.toLowerCase().contains('funding')) {
-      return 'Current funding rates: BTC +0.023%, ETH +0.018%, SOL -0.008%. '
-          'BTC and ETH funding is mildly positive — longs are paying shorts. '
-          'This is healthy and suggests organic buying, not overleveraged longs. '
-          'SOL has slight negative funding, which could signal short-term bearish bias or upcoming short squeeze.';
-    }
-    return 'Great question! Based on current market conditions, I\'m analyzing the data. '
-        'BTC is showing strong structure with neutral funding and positive ETF flows. '
-        'The overall market sentiment is bullish at 72%. '
-        'Would you like me to dive deeper into any specific aspect?';
   }
 
   @override
@@ -78,31 +45,44 @@ class _AiChatScreenState extends State<AiChatScreen> {
       backgroundColor: AppColors.bgPrimary,
       body: Row(
         children: [
-          // Chat area
+          // Chat area — header and input are static; only the list rebuilds
           Expanded(
             child: Column(
               children: [
-                _ChatHeader(),
+                const _ChatHeader(),
+                // Rebuilds only when messages or isTyping changes
                 Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(20),
-                    itemCount: _messages.length + (_isTyping ? 1 : 0),
-                    itemBuilder: (_, i) {
-                      if (i == _messages.length) return const _TypingIndicator();
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _ChatMessage(message: _messages[i]),
+                  child: Consumer(
+                    builder: (_, ref, __) {
+                      final messages = ref.watch(
+                        aiChatProvider.select((n) => n.messages),
+                      );
+                      final isTyping = ref.watch(
+                        aiChatProvider.select((n) => n.isTyping),
+                      );
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(20),
+                        itemCount: messages.length + (isTyping ? 1 : 0),
+                        itemBuilder: (_, i) {
+                          if (i == messages.length) {
+                            return const _TypingIndicator();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _ChatMessage(message: messages[i]),
+                          );
+                        },
                       );
                     },
                   ),
                 ),
-                _ChatInput(controller: _controller, onSend: _sendMessage),
+                _ChatInput(controller: _controller, onSend: _send),
               ],
             ),
           ),
 
-          // Suggested sidebar
+          // Suggested sidebar — fully static
           Container(
             width: 260,
             decoration: const BoxDecoration(
@@ -111,7 +91,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             ),
             child: _SuggestedPanel(
               prompts: _suggested,
-              onTap: _sendMessage,
+              onTap: _send,
             ),
           ),
         ],
@@ -127,13 +107,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
   }
 }
 
-class _Message {
-  final String text;
-  final bool isUser;
-  _Message({required this.text, required this.isUser});
-}
-
 class _ChatHeader extends StatelessWidget {
+  const _ChatHeader();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -172,8 +148,8 @@ class _ChatHeader extends StatelessWidget {
 }
 
 class _ChatMessage extends StatelessWidget {
-  final _Message message;
-  const _ChatMessage({super.key, required this.message});
+  final ChatMessage message;
+  const _ChatMessage({required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -225,6 +201,7 @@ class _ChatMessage extends StatelessWidget {
   }
 }
 
+// Must stay StatefulWidget — uses AnimationController with TickerProvider
 class _TypingIndicator extends StatefulWidget {
   const _TypingIndicator();
 
@@ -244,7 +221,10 @@ class _TypingIndicatorState extends State<_TypingIndicator>
   }
 
   @override
-  void dispose() { _c.dispose(); super.dispose(); }
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -377,7 +357,8 @@ class _SuggestedPanel extends StatelessWidget {
                 Expanded(child: Text(p, style: const TextStyle(
                   fontSize: 12, color: AppColors.textMuted,
                 ))),
-                const Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.textDisabled),
+                const Icon(Icons.arrow_forward_rounded, size: 14,
+                    color: AppColors.textDisabled),
               ],
             ),
           ),

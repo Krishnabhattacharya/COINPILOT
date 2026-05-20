@@ -1,30 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
+import '../../providers/risk_provider.dart';
 
-class RiskManagementScreen extends StatefulWidget {
+// Outer build is static — SectionHeader and _RiskTips never rebuild
+class RiskManagementScreen extends ConsumerWidget {
   const RiskManagementScreen({super.key});
 
   @override
-  State<RiskManagementScreen> createState() => _RiskManagementScreenState();
-}
-
-class _RiskManagementScreenState extends State<RiskManagementScreen> {
-  double _capital = 10000;
-  double _leverage = 5;
-  double _riskPercent = 2;
-  double _entryPrice = 97420;
-  double _stopLoss = 95000;
-
-  double get _positionSize => _capital * _riskPercent / 100;
-  double get _liquidationDistance => 100 / _leverage;
-  double get _liquidationPrice => _entryPrice - (_entryPrice * _liquidationDistance / 100);
-  double get _riskInDollars => _capital * _riskPercent / 100;
-  String get _riskLevel => _leverage <= 3 ? 'Conservative' : _leverage <= 7 ? 'Moderate' : 'High Risk';
-  Color get _riskColor => _leverage <= 3 ? AppColors.brandGreen : _leverage <= 7 ? AppColors.brandAmber : AppColors.brandRed;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: SingleChildScrollView(
@@ -37,56 +22,82 @@ class _RiskManagementScreenState extends State<RiskManagementScreen> {
               subtitle: 'AI-powered position sizing and risk assessment',
             ),
             const SizedBox(height: 20),
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Calculator
                 Expanded(
                   flex: 2,
                   child: Column(
                     children: [
-                      _CalculatorCard(
-                        capital: _capital,
-                        leverage: _leverage,
-                        riskPercent: _riskPercent,
-                        entryPrice: _entryPrice,
-                        stopLoss: _stopLoss,
-                        onCapitalChanged: (v) => setState(() => _capital = v),
-                        onLeverageChanged: (v) => setState(() => _leverage = v),
-                        onRiskChanged: (v) => setState(() => _riskPercent = v),
-                        onEntryChanged: (v) => setState(() => _entryPrice = v),
-                        onStopChanged: (v) => setState(() => _stopLoss = v),
+                      // Calculator + results rebuild together on any slider change
+                      Consumer(
+                        builder: (_, ref, __) {
+                          final n = ref.watch(riskProvider);
+                          return _CalculatorCard(
+                            capital: n.capital,
+                            leverage: n.leverage,
+                            riskPercent: n.riskPercent,
+                            entryPrice: n.entryPrice,
+                            stopLoss: n.stopLoss,
+                            onCapitalChanged: (v) =>
+                                ref.read(riskProvider).setCapital(v),
+                            onLeverageChanged: (v) =>
+                                ref.read(riskProvider).setLeverage(v),
+                            onRiskChanged: (v) =>
+                                ref.read(riskProvider).setRiskPercent(v),
+                            onEntryChanged: (v) =>
+                                ref.read(riskProvider).setEntryPrice(v),
+                            onStopChanged: (v) =>
+                                ref.read(riskProvider).setStopLoss(v),
+                          );
+                        },
                       ),
                       const SizedBox(height: 16),
-                      _ResultsCard(
-                        positionSize: _positionSize,
-                        liquidationPrice: _liquidationPrice,
-                        liquidationDistance: _liquidationDistance,
-                        riskInDollars: _riskInDollars,
-                        riskLevel: _riskLevel,
-                        riskColor: _riskColor,
-                        leverage: _leverage,
+                      Consumer(
+                        builder: (_, ref, __) {
+                          final n = ref.watch(riskProvider);
+                          return _ResultsCard(
+                            positionSize: n.positionSize,
+                            liquidationPrice: n.liquidationPrice,
+                            liquidationDistance: n.liquidationDistance,
+                            riskInDollars: n.riskInDollars,
+                            riskLevel: n.riskLevel,
+                            riskColor: n.riskColor,
+                            leverage: n.leverage,
+                          );
+                        },
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 16),
-
-                // AI Warnings + Tips
                 Expanded(
                   child: Column(
                     children: [
-                      _AiRiskWarning(
-                        leverage: _leverage,
-                        riskPercent: _riskPercent,
-                        riskColor: _riskColor,
-                        liquidationDistance: _liquidationDistance,
+                      // Warning + meter rebuild on leverage/risk changes
+                      Consumer(
+                        builder: (_, ref, __) {
+                          final n = ref.watch(riskProvider);
+                          return Column(
+                            children: [
+                              _AiRiskWarning(
+                                leverage: n.leverage,
+                                riskPercent: n.riskPercent,
+                                riskColor: n.riskColor,
+                                liquidationDistance: n.liquidationDistance,
+                              ),
+                              const SizedBox(height: 16),
+                              _LeverageMeter(
+                                leverage: n.leverage,
+                                color: n.riskColor,
+                              ),
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 16),
-                      _LeverageMeter(leverage: _leverage, color: _riskColor),
-                      const SizedBox(height: 16),
-                      _RiskTips(),
+                      // Tips are static — never need to rebuild
+                      const _RiskTips(),
                     ],
                   ),
                 ),
@@ -108,12 +119,17 @@ class _CalculatorCard extends StatelessWidget {
     required this.capital, required this.leverage, required this.riskPercent,
     required this.entryPrice, required this.stopLoss,
     required this.onCapitalChanged, required this.onLeverageChanged,
-    required this.onRiskChanged, required this.onEntryChanged, required this.onStopChanged,
+    required this.onRiskChanged, required this.onEntryChanged,
+    required this.onStopChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    final riskColor = leverage <= 3 ? AppColors.brandGreen : leverage <= 7 ? AppColors.brandAmber : AppColors.brandRed;
+    final riskColor = leverage <= 3
+        ? AppColors.brandGreen
+        : leverage <= 7
+            ? AppColors.brandAmber
+            : AppColors.brandRed;
 
     return GlassCard(
       child: Column(
@@ -121,14 +137,16 @@ class _CalculatorCard extends StatelessWidget {
         children: [
           const SectionHeader(title: 'Position Calculator'),
           const SizedBox(height: 20),
-
-          _SliderRow('Account Capital', '\$${capital.toInt().toString().replaceAllMapped(
-            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},',
-          )}', capital, 1000, 100000, 1000, AppColors.brandGreen, onCapitalChanged),
+          _SliderRow(
+            'Account Capital',
+            '\$${capital.toInt().toString().replaceAllMapped(
+              RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},',
+            )}',
+            capital, 1000, 100000, 1000, AppColors.brandGreen, onCapitalChanged,
+          ),
           const SizedBox(height: 16),
-
-          _SliderRow('Leverage', '${leverage.toInt()}x', leverage, 1, 20, 1, riskColor,
-            onLeverageChanged),
+          _SliderRow('Leverage', '${leverage.toInt()}x', leverage, 1, 20, 1,
+            riskColor, onLeverageChanged),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -140,7 +158,6 @@ class _CalculatorCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-
           _SliderRow('Risk Per Trade', '${riskPercent.toStringAsFixed(1)}%',
             riskPercent, 0.5, 10, 0.5, AppColors.brandGreen, onRiskChanged),
         ],
@@ -168,7 +185,7 @@ class _SliderRow extends StatelessWidget {
   final ValueChanged<double> onChanged;
 
   const _SliderRow(this.label, this.value, this.current, this.min, this.max,
-    this.divisions, this.color, this.onChanged);
+      this.divisions, this.color, this.onChanged);
 
   @override
   Widget build(BuildContext context) {
@@ -178,13 +195,13 @@ class _SliderRow extends StatelessWidget {
           Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
           const Spacer(),
           Text(value, style: TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w700, color: color, fontFamily: 'JetBrainsMono',
+            fontSize: 13, fontWeight: FontWeight.w700, color: color,
+            fontFamily: 'JetBrainsMono',
           )),
         ]),
         SliderTheme(
           data: SliderThemeData(
             trackHeight: 3,
-           // thumbRadius: 7,
             activeTrackColor: color,
             inactiveTrackColor: AppColors.borderSubtle,
             thumbColor: color,
@@ -219,9 +236,12 @@ class _ResultsCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              _Metric('Position Size', '\$${positionSize.toStringAsFixed(0)}', AppColors.brandGreen),
-              _Metric('Liq. Price', '\$${liquidationPrice.toStringAsFixed(0)}', riskColor),
-              _Metric('Max Loss', '\$${riskInDollars.toStringAsFixed(0)}', AppColors.brandRed),
+              _Metric('Position Size', '\$${positionSize.toStringAsFixed(0)}',
+                AppColors.brandGreen),
+              _Metric('Liq. Price', '\$${liquidationPrice.toStringAsFixed(0)}',
+                riskColor),
+              _Metric('Max Loss', '\$${riskInDollars.toStringAsFixed(0)}',
+                AppColors.brandRed),
             ],
           ),
           const SizedBox(height: 12),
@@ -234,7 +254,7 @@ class _ResultsCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Text('Risk Level', style: const TextStyle(
+                const Text('Risk Level', style: TextStyle(
                   fontSize: 12, color: AppColors.textMuted,
                 )),
                 const Spacer(),
@@ -251,8 +271,7 @@ class _ResultsCard extends StatelessWidget {
 }
 
 class _Metric extends StatelessWidget {
-  final String label;
-  final String value;
+  final String label, value;
   final Color color;
   const _Metric(this.label, this.value, this.color);
 
@@ -264,7 +283,8 @@ class _Metric extends StatelessWidget {
           Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
           const SizedBox(height: 4),
           Text(value, style: TextStyle(
-            fontSize: 16, fontWeight: FontWeight.w800, color: color, fontFamily: 'JetBrainsMono',
+            fontSize: 16, fontWeight: FontWeight.w800, color: color,
+            fontFamily: 'JetBrainsMono',
           )),
         ],
       ),
@@ -314,12 +334,14 @@ class _AiRiskWarning extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   isHigh
-                      ? '${leverage.toInt()}x leverage is very high during current volatility. '
-                        'A ${liquidationDistance.toStringAsFixed(1)}% adverse move liquidates your position. '
-                        'Consider reducing to 3–5x.'
+                      ? '${leverage.toInt()}x leverage is very high during current '
+                        'volatility. A ${liquidationDistance.toStringAsFixed(1)}% adverse '
+                        'move liquidates your position. Consider reducing to 3–5x.'
                       : 'Current leverage of ${leverage.toInt()}x is moderate. '
                         'Ensure your stop loss is set below key support at \$95,800.',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted, height: 1.5),
+                  style: const TextStyle(
+                    fontSize: 11, color: AppColors.textMuted, height: 1.5,
+                  ),
                 ),
               ],
             ),
@@ -351,11 +373,11 @@ class _LeverageMeter extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   height: 20,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
                       colors: [AppColors.brandGreen, AppColors.brandAmber, AppColors.brandRed],
                     ),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.all(Radius.circular(8)),
                   ),
                 ),
               ),
@@ -378,7 +400,8 @@ class _LeverageMeter extends StatelessWidget {
               const Text('1x Safe', style: TextStyle(fontSize: 9, color: AppColors.brandGreen)),
               const Spacer(),
               Text('${leverage.toInt()}x', style: TextStyle(
-                fontSize: 11, fontWeight: FontWeight.w700, color: color, fontFamily: 'JetBrainsMono',
+                fontSize: 11, fontWeight: FontWeight.w700, color: color,
+                fontFamily: 'JetBrainsMono',
               )),
               const Spacer(),
               const Text('20x Danger', style: TextStyle(fontSize: 9, color: AppColors.brandRed)),
@@ -391,7 +414,9 @@ class _LeverageMeter extends StatelessWidget {
 }
 
 class _RiskTips extends StatelessWidget {
-  final _tips = const [
+  const _RiskTips();
+
+  static const _tips = [
     'Never risk more than 1–2% of capital per trade',
     'Always set stop loss before entering a position',
     'Reduce leverage during high volatility periods',

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
+import 'package:percent_indicator/percent_indicator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/glass_card.dart';
 
@@ -38,32 +38,35 @@ class FearGreedWidget extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Center(
-            child: SizedBox(
-              width: 140,
-              height: 80,
-              child: CustomPaint(
-                painter: _GaugePainter(value: value, color: color),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      '$value',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        color: color,
-                        fontFamily: 'JetBrainsMono',
-                      ),
+            child: CircularPercentIndicator(
+              radius: 52.0,
+              lineWidth: 10.0,
+              percent: value / 100,
+              animation: true,
+              animationDuration: 800,
+              circularStrokeCap: CircularStrokeCap.round,
+              progressColor: color,
+              backgroundColor: AppColors.borderSubtle,
+              center: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$value',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: color,
+                      fontFamily: 'JetBrainsMono',
                     ),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
+                  ),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -85,47 +88,6 @@ class FearGreedWidget extends StatelessWidget {
   }
 }
 
-class _GaugePainter extends CustomPainter {
-  final int value;
-  final Color color;
-  _GaugePainter({required this.value, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Rect.fromLTWH(0, 0, size.width, size.height * 2);
-    const startAngle = math.pi;
-    const sweepAngle = math.pi;
-
-    // Background arc
-    canvas.drawArc(
-      rect,
-      startAngle,
-      sweepAngle,
-      false,
-      Paint()
-        ..color = AppColors.borderSubtle
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 10
-        ..strokeCap = StrokeCap.round,
-    );
-
-    // Value arc
-    canvas.drawArc(
-      rect,
-      startAngle,
-      sweepAngle * value / 100,
-      false,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 10
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_GaugePainter old) => old.value != value;
-}
 
 class _ScaleItem extends StatelessWidget {
   final String label;

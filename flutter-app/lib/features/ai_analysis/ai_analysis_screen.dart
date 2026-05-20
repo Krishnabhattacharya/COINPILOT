@@ -1,18 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
+import '../../providers/ai_analysis_provider.dart';
 
-class AiAnalysisScreen extends StatefulWidget {
+const _coins = ['BTC', 'ETH', 'SOL', 'BNB'];
+
+// ConsumerStatefulWidget — keeps TextEditingController, stateless coin selection
+class AiAnalysisScreen extends ConsumerStatefulWidget {
   const AiAnalysisScreen({super.key});
 
   @override
-  State<AiAnalysisScreen> createState() => _AiAnalysisScreenState();
+  ConsumerState<AiAnalysisScreen> createState() => _AiAnalysisScreenState();
 }
 
-class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
+class _AiAnalysisScreenState extends ConsumerState<AiAnalysisScreen> {
   final _controller = TextEditingController();
-  String _selectedCoin = 'BTC';
-  final _coins = ['BTC', 'ETH', 'SOL', 'BNB'];
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +29,7 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
       backgroundColor: AppColors.bgPrimary,
       body: Row(
         children: [
-          // Main analysis
+          // Main analysis panel
           Expanded(
             flex: 3,
             child: SingleChildScrollView(
@@ -28,14 +37,32 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Header(
-                    selectedCoin: _selectedCoin,
-                    coins: _coins,
-                    onCoinChanged: (c) => setState(() => _selectedCoin = c),
+                  // Header (coin selector) rebuilds on coin change
+                  Consumer(
+                    builder: (_, ref, __) {
+                      final coin = ref.watch(
+                        aiAnalysisProvider.select((n) => n.selectedCoin),
+                      );
+                      return _Header(
+                        selectedCoin: coin,
+                        coins: _coins,
+                        onCoinChanged: (c) =>
+                            ref.read(aiAnalysisProvider).selectCoin(c),
+                      );
+                    },
                   ),
                   const SizedBox(height: 20),
-                  _MarketSummaryCard(coin: _selectedCoin),
+                  // Market summary rebuilds on coin change (shows coin name in text)
+                  Consumer(
+                    builder: (_, ref, __) {
+                      final coin = ref.watch(
+                        aiAnalysisProvider.select((n) => n.selectedCoin),
+                      );
+                      return _MarketSummaryCard(coin: coin);
+                    },
+                  ),
                   const SizedBox(height: 16),
+                  // These cards are static (no dynamic coin references in mock data)
                   const Row(
                     children: [
                       Expanded(child: _SupportResistanceCard()),
@@ -51,8 +78,7 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
               ),
             ),
           ),
-
-          // AI Chat sidebar
+          // Sidebar chat panel — static, no state dependency
           Container(
             width: 340,
             decoration: const BoxDecoration(
@@ -64,12 +90,6 @@ class _AiAnalysisScreenState extends State<AiAnalysisScreen> {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 }
 
@@ -167,14 +187,15 @@ class _MarketSummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-           Text(
-            '$coin is in a bullish trend structure. The price has been making higher highs and higher lows '
-            'since the recent break above the \$94K resistance zone. RSI sits at 67 — strong but '
-            'not yet overbought. The upcoming resistance zone at \$98.4K–\$100K will be key. '
-            'A rejection here could lead to a healthy retracement to the \$94K–\$96K range before '
-            'continuation higher. Funding rates remain neutral (0.023%), indicating organic buying '
-            'rather than leveraged longs. Smart money is accumulating on dips.',
-            style: TextStyle(
+          Text(
+            '$coin is in a bullish trend structure. The price has been making higher highs '
+            'and higher lows since the recent break above the \$94K resistance zone. RSI sits '
+            'at 67 — strong but not yet overbought. The upcoming resistance zone at '
+            '\$98.4K–\$100K will be key. A rejection here could lead to a healthy retracement '
+            'to the \$94K–\$96K range before continuation higher. Funding rates remain neutral '
+            '(0.023%), indicating organic buying rather than leveraged longs. Smart money is '
+            'accumulating on dips.',
+            style: const TextStyle(
               fontSize: 13, color: Color(0xCCFFFFFF), height: 1.7,
             ),
           ),
@@ -197,8 +218,7 @@ class _MarketSummaryCard extends StatelessWidget {
 }
 
 class _StatChip extends StatelessWidget {
-  final String label;
-  final String value;
+  final String label, value;
   final Color color;
   const _StatChip(this.label, this.value, this.color);
 
@@ -272,8 +292,7 @@ class _SupportResistanceCard extends StatelessWidget {
 }
 
 class _Level extends StatelessWidget {
-  final String label;
-  final String price;
+  final String label, price;
   final Color color;
   final double strength;
   const _Level(this.label, this.price, this.color, this.strength);
@@ -287,8 +306,7 @@ class _Level extends StatelessWidget {
           Container(
             width: 24, height: 24,
             decoration: BoxDecoration(
-              color: color.withAlpha(20),
-              borderRadius: BorderRadius.circular(6),
+              color: color.withAlpha(20), borderRadius: BorderRadius.circular(6),
             ),
             child: Center(child: Text(label, style: TextStyle(
               fontSize: 8, fontWeight: FontWeight.w700, color: color,
@@ -405,21 +423,23 @@ class _VolatilityCard extends StatelessWidget {
     return GlassCard(
       child: Row(
         children: [
-          Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Volatility Analysis', style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white,
-              )),
-              const SizedBox(height: 8),
-              const Text(
-                'Current volatility (ATR-14) is moderate at 3.2%. '
-                'Historical comparison: lower than the August 2024 high of 8.4%, '
-                'suggesting controlled price action. Good conditions for trend following.',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.6),
-              ),
-            ],
-          )),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text('Volatility Analysis', style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white,
+                )),
+                SizedBox(height: 8),
+                Text(
+                  'Current volatility (ATR-14) is moderate at 3.2%. '
+                  'Historical comparison: lower than the August 2024 high of 8.4%, '
+                  'suggesting controlled price action. Good conditions for trend following.',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.6),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(width: 20),
           Column(
             children: [
@@ -437,8 +457,7 @@ class _VolatilityCard extends StatelessWidget {
 }
 
 class _VolMetric extends StatelessWidget {
-  final String label;
-  final String value;
+  final String label, value;
   final Color color;
   const _VolMetric(this.label, this.value, this.color);
 
@@ -470,10 +489,10 @@ class _KeyLevelsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
+    return const GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Text('Key Insights', style: TextStyle(
             fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white,
           )),
@@ -508,17 +527,14 @@ class _Insight extends StatelessWidget {
           Container(
             width: 28, height: 28,
             decoration: BoxDecoration(
-              color: color.withAlpha(20),
-              borderRadius: BorderRadius.circular(8),
+              color: color.withAlpha(20), borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, size: 14, color: color),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            child: Text(text, style: const TextStyle(
-              fontSize: 12, color: AppColors.textMuted, height: 1.5,
-            )),
-          ),
+          Expanded(child: Text(text, style: const TextStyle(
+            fontSize: 12, color: AppColors.textMuted, height: 1.5,
+          ))),
         ],
       ),
     );
@@ -528,6 +544,13 @@ class _Insight extends StatelessWidget {
 class _AiChatPanel extends StatelessWidget {
   final TextEditingController controller;
   const _AiChatPanel({required this.controller});
+
+  static const _prompts = [
+    'Why is BTC pumping today?',
+    'What is the next resistance?',
+    'Is this a good entry point?',
+    'Explain the funding rate',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -552,12 +575,9 @@ class _AiChatPanel extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _SuggestedPrompts(),
+              _SuggestedPrompts(prompts: _prompts),
               const SizedBox(height: 16),
-              _ChatBubble(
-                text: 'What is the current BTC market structure?',
-                isUser: true,
-              ),
+              _ChatBubble(text: 'What is the current BTC market structure?', isUser: true),
               const SizedBox(height: 12),
               _ChatBubble(
                 text: 'BTC is in a bullish market structure with higher highs and higher lows. '
@@ -605,12 +625,8 @@ class _AiChatPanel extends StatelessWidget {
 }
 
 class _SuggestedPrompts extends StatelessWidget {
-  final _prompts = const [
-    'Why is BTC pumping today?',
-    'What is the next resistance?',
-    'Is this a good entry point?',
-    'Explain the funding rate',
-  ];
+  final List<String> prompts;
+  const _SuggestedPrompts({required this.prompts});
 
   @override
   Widget build(BuildContext context) {
@@ -622,9 +638,8 @@ class _SuggestedPrompts extends StatelessWidget {
         )),
         const SizedBox(height: 8),
         Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: _prompts.map((p) => GestureDetector(
+          spacing: 6, runSpacing: 6,
+          children: prompts.map((p) => GestureDetector(
             onTap: () {},
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -657,9 +672,7 @@ class _ChatBubble extends StatelessWidget {
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isUser
-              ? AppColors.brandGreen.withAlpha(20)
-              : AppColors.bgCard,
+          color: isUser ? AppColors.brandGreen.withAlpha(20) : AppColors.bgCard,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isUser
@@ -667,12 +680,9 @@ class _ChatBubble extends StatelessWidget {
                 : AppColors.borderSubtle,
           ),
         ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 12, color: Color(0xCCFFFFFF), height: 1.5,
-          ),
-        ),
+        child: Text(text, style: const TextStyle(
+          fontSize: 12, color: Color(0xCCFFFFFF), height: 1.5,
+        )),
       ),
     );
   }

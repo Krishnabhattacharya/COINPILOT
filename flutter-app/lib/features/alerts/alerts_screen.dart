@@ -1,26 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
+import '../../providers/alerts_provider.dart';
 
-class AlertsScreen extends StatefulWidget {
+// Outer build is static — _recentAlerts list never rebuilds
+class AlertsScreen extends ConsumerWidget {
   const AlertsScreen({super.key});
 
   @override
-  State<AlertsScreen> createState() => _AlertsScreenState();
-}
-
-class _AlertsScreenState extends State<AlertsScreen> {
-  final _switches = {
-    'Funding Rate Spikes': true,
-    'Whale Alerts (\$5M+)': true,
-    'Volatility Burst': false,
-    'Sentiment Change': true,
-    'New Listings': true,
-    'Price Targets': true,
-  };
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: SingleChildScrollView(
@@ -33,27 +22,23 @@ class _AlertsScreenState extends State<AlertsScreen> {
               subtitle: 'Configure your market intelligence alerts',
             ),
             const SizedBox(height: 20),
-
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
+                // Recent alerts are static mock data — never rebuild
+                 Expanded(
                   flex: 2,
-                  child: Column(
-                    children: [
-                      GlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Recent Alerts', style: TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white,
-                            )),
-                            const SizedBox(height: 12),
-                            ..._recentAlerts.map((a) => _AlertItem(alert: a)),
-                          ],
-                        ),
-                      ),
-                    ],
+                  child: GlassCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Recent Alerts', style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white,
+                        )),
+                        SizedBox(height: 12),
+                        ..._recentAlerts.map((a) => _AlertItem(alert: a)),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -68,23 +53,36 @@ class _AlertsScreenState extends State<AlertsScreen> {
                               fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white,
                             )),
                             const SizedBox(height: 12),
-                            ..._switches.entries.map((e) => Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Row(
-                                children: [
-                                  Expanded(child: Text(e.key, style: const TextStyle(
-                                    fontSize: 12, color: AppColors.textMuted,
-                                  ))),
-                                  Switch(
-                                    value: e.value,
-                                    onChanged: (v) => setState(() => _switches[e.key] = v),
-                                    activeColor: AppColors.brandGreen,
-                                    inactiveTrackColor: AppColors.borderSubtle,
-                                    trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-                                  ),
-                                ],
-                              ),
-                            )),
+                            // Only switches column rebuilds on toggle
+                            Consumer(
+                              builder: (_, ref, __) {
+                                final switches = ref.watch(
+                                  alertsProvider.select((n) => n.switches),
+                                );
+                                return Column(
+                                  children: switches.entries.map((e) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Row(
+                                      children: [
+                                        Expanded(child: Text(e.key, style: const TextStyle(
+                                          fontSize: 12, color: AppColors.textMuted,
+                                        ))),
+                                        Switch(
+                                          value: e.value,
+                                          onChanged: (v) =>
+                                              ref.read(alertsProvider).toggle(e.key, v),
+                                          activeColor: AppColors.brandGreen,
+                                          inactiveTrackColor: AppColors.borderSubtle,
+                                          trackOutlineColor: WidgetStateProperty.all(
+                                            Colors.transparent,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )).toList(),
+                                );
+                              },
+                            ),
                           ],
                         ),
                       ),
@@ -130,12 +128,24 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 
   static const _recentAlerts = [
-    _Alert(Icons.warning_rounded, 'Funding Rate Spike', 'ARB/USDT funding reached +0.085% — elevated squeeze risk', AppColors.brandRed, '2m ago'),
-    _Alert(Icons.water_rounded, 'Whale Alert', '2,840 BTC transferred to Binance from unknown wallet', AppColors.brandPurple, '4m ago'),
-    _Alert(Icons.new_releases_rounded, 'New Listing', 'KEKIUS listed on Binance — AI score: 78/100', AppColors.brandGreen, '2h ago'),
-    _Alert(Icons.sentiment_satisfied_rounded, 'Sentiment Shift', 'BTC sentiment shifted from Neutral → Bullish (68% → 74%)', AppColors.brandBlue, '3h ago'),
-    _Alert(Icons.bolt_rounded, 'Volatility Alert', 'ETH 15m volatility spike detected — ATR x3 normal', AppColors.brandAmber, '5h ago'),
-    _Alert(Icons.flag_rounded, 'Price Target', 'BTC approaching R1 resistance at \$98,400', AppColors.brandCyan, '6h ago'),
+    _Alert(Icons.warning_rounded, 'Funding Rate Spike',
+      'ARB/USDT funding reached +0.085% — elevated squeeze risk',
+      AppColors.brandRed, '2m ago'),
+    _Alert(Icons.water_rounded, 'Whale Alert',
+      '2,840 BTC transferred to Binance from unknown wallet',
+      AppColors.brandPurple, '4m ago'),
+    _Alert(Icons.new_releases_rounded, 'New Listing',
+      'KEKIUS listed on Binance — AI score: 78/100',
+      AppColors.brandGreen, '2h ago'),
+    _Alert(Icons.sentiment_satisfied_rounded, 'Sentiment Shift',
+      'BTC sentiment shifted from Neutral → Bullish (68% → 74%)',
+      AppColors.brandBlue, '3h ago'),
+    _Alert(Icons.bolt_rounded, 'Volatility Alert',
+      'ETH 15m volatility spike detected — ATR x3 normal',
+      AppColors.brandAmber, '5h ago'),
+    _Alert(Icons.flag_rounded, 'Price Target',
+      'BTC approaching R1 resistance at \$98,400',
+      AppColors.brandCyan, '6h ago'),
   ];
 }
 

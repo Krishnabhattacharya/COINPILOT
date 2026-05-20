@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/glass_card.dart';
 
@@ -163,10 +164,31 @@ class _CoinCard extends StatelessWidget {
           SizedBox(
             width: 60,
             height: 30,
-            child: CustomPaint(
-              painter: _SparklinePainter(
-                points: coin.sparkline,
-                color: coin.positive ? AppColors.brandGreen : AppColors.brandRed,
+            child: LineChart(
+              LineChartData(
+                gridData: const FlGridData(show: false),
+                titlesData: const FlTitlesData(show: false),
+                borderData: FlBorderData(show: false),
+                lineTouchData: const LineTouchData(enabled: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: coin.sparkline
+                        .asMap()
+                        .entries
+                        .map((e) => FlSpot(e.key.toDouble(), e.value))
+                        .toList(),
+                    isCurved: true,
+                    color: coin.positive ? AppColors.brandGreen : AppColors.brandRed,
+                    barWidth: 1.5,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: (coin.positive ? AppColors.brandGreen : AppColors.brandRed)
+                          .withAlpha(20),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -176,57 +198,3 @@ class _CoinCard extends StatelessWidget {
   }
 }
 
-class _SparklinePainter extends CustomPainter {
-  final List<double> points;
-  final Color color;
-
-  _SparklinePainter({required this.points, required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.isEmpty) return;
-    final min = points.reduce((a, b) => a < b ? a : b);
-    final max = points.reduce((a, b) => a > b ? a : b);
-    final range = max - min;
-    if (range == 0) return;
-
-    final path = Path();
-    final fillPath = Path();
-
-    for (var i = 0; i < points.length; i++) {
-      final x = size.width * i / (points.length - 1);
-      final y = size.height - (size.height * (points[i] - min) / range);
-      if (i == 0) {
-        path.moveTo(x, y);
-        fillPath.moveTo(x, size.height);
-        fillPath.lineTo(x, y);
-      } else {
-        path.lineTo(x, y);
-        fillPath.lineTo(x, y);
-      }
-    }
-
-    fillPath.lineTo(size.width, size.height);
-    fillPath.close();
-
-    canvas.drawPath(
-      fillPath,
-      Paint()
-        ..color = color.withAlpha(20)
-        ..style = PaintingStyle.fill,
-    );
-
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_SparklinePainter old) =>
-      old.points != points || old.color != color;
-}

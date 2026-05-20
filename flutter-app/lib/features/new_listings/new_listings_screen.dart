@@ -1,24 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
+import '../../providers/new_listings_provider.dart';
 
-class NewListingsScreen extends StatefulWidget {
+const _filters = ['All', 'AI', 'Meme', 'DeFi', 'Gaming', 'RWA'];
+
+// Screen is stateless — ChangeNotifierProvider.autoDispose handles lifecycle
+class NewListingsScreen extends ConsumerWidget {
   const NewListingsScreen({super.key});
 
   @override
-  State<NewListingsScreen> createState() => _NewListingsScreenState();
-}
-
-class _NewListingsScreenState extends State<NewListingsScreen> {
-  String _filter = 'All';
-  final _filters = ['All', 'AI', 'Meme', 'DeFi', 'Gaming', 'RWA'];
-
-  @override
-  Widget build(BuildContext context) {
-    final filtered = _filter == 'All'
-        ? _listings
-        : _listings.where((l) => l.narrative == _filter).toList();
-
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Outer build is static — no ref.watch here, only Consumer inside
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: CustomScrollView(
@@ -29,92 +23,104 @@ class _NewListingsScreenState extends State<NewListingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Header(),
+                  const _Header(),
                   const SizedBox(height: 16),
-                  _FilterRow(
-                    filters: _filters,
-                    selected: _filter,
-                    onChanged: (f) => setState(() => _filter = f),
+                  // Only filter row rebuilds when filter changes
+                  Consumer(
+                    builder: (_, ref, __) {
+                      final filter = ref.watch(
+                        newListingsProvider.select((n) => n.filter),
+                      );
+                      return _FilterRow(
+                        filters: _filters,
+                        selected: filter,
+                        onChanged: (f) =>
+                            ref.read(newListingsProvider).setFilter(f),
+                      );
+                    },
                   ),
                   const SizedBox(height: 20),
                 ],
               ),
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (_, i) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _ListingCard(listing: filtered[i]),
+          // Only sliver list rebuilds when filter changes
+          Consumer(
+            builder: (_, ref, __) {
+              final filter = ref.watch(
+                newListingsProvider.select((n) => n.filter),
+              );
+              final filtered = filter == 'All'
+                  ? _listings
+                  : _listings.where((l) => l.narrative == filter).toList();
+              return SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (_, i) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _ListingCard(listing: filtered[i]),
+                    ),
+                    childCount: filtered.length,
+                  ),
                 ),
-                childCount: filtered.length,
-              ),
-            ),
+              );
+            },
           ),
           const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
         ],
       ),
     );
   }
-
-  static const _listings = [
-    _Listing(
-      symbol: 'KEKIUS', name: 'Kekius Maximus', emoji: '🐸',
-      exchange: 'Binance', listingDate: '2h ago',
-      price: '\$0.0842', change: '+284%',
-      volumeSurge: '48x',
-      socialSentiment: 92, momentumScore: 88, potentialScore: 78,
-      riskLevel: 'High',
-      narrative: 'Meme',
-      aiReason: 'Elon-adjacent meme narrative with viral social spread. '
-          'Early exchange listing with institutional market makers. '
-          'Similar launch pattern to DOGE 2021 and PEPE 2023.',
-      whaleActivity: true,
-      smartMoney: true,
-    ),
-    _Listing(
-      symbol: 'AIXT', name: 'AI Execution Token', emoji: '🤖',
-      exchange: 'Bybit', listingDate: '5h ago',
-      price: '\$2.14', change: '+64%',
-      volumeSurge: '12x',
-      socialSentiment: 78, momentumScore: 72, potentialScore: 71,
-      riskLevel: 'Medium',
-      narrative: 'AI',
-      aiReason: 'AI agent infrastructure play. Strong team with prior exits. '
-          'Trading volume suggests institutional interest in first 4 hours.',
-      whaleActivity: true,
-      smartMoney: false,
-    ),
-    _Listing(
-      symbol: 'RWAX', name: 'RWA Exchange', emoji: '🏦',
-      exchange: 'Binance', listingDate: '12h ago',
-      price: '\$0.42', change: '+38%',
-      volumeSurge: '8x',
-      socialSentiment: 65, momentumScore: 60, potentialScore: 68,
-      riskLevel: 'Medium',
-      narrative: 'RWA',
-      aiReason: 'Real-world asset tokenization narrative with major bank partnerships. '
-          'Fundamentally strong with real revenue. Lower risk vs meme plays.',
-      whaleActivity: false,
-      smartMoney: true,
-    ),
-    _Listing(
-      symbol: 'GMFI', name: 'GameFi Protocol', emoji: '🎮',
-      exchange: 'Bybit', listingDate: '1d ago',
-      price: '\$0.18', change: '+12%',
-      volumeSurge: '3x',
-      socialSentiment: 48, momentumScore: 42, potentialScore: 45,
-      riskLevel: 'Low',
-      narrative: 'Gaming',
-      aiReason: 'Solid gaming infrastructure with 200K beta users. '
-          'Early momentum has slowed. Good for accumulation if narrative revives.',
-      whaleActivity: false,
-      smartMoney: false,
-    ),
-  ];
 }
+
+const _listings = [
+  _Listing(
+    symbol: 'KEKIUS', name: 'Kekius Maximus', emoji: '🐸',
+    exchange: 'Binance', listingDate: '2h ago',
+    price: '\$0.0842', change: '+284%',
+    volumeSurge: '48x',
+    socialSentiment: 92, momentumScore: 88, potentialScore: 78,
+    riskLevel: 'High', narrative: 'Meme',
+    aiReason: 'Elon-adjacent meme narrative with viral social spread. '
+        'Early exchange listing with institutional market makers. '
+        'Similar launch pattern to DOGE 2021 and PEPE 2023.',
+    whaleActivity: true, smartMoney: true,
+  ),
+  _Listing(
+    symbol: 'AIXT', name: 'AI Execution Token', emoji: '🤖',
+    exchange: 'Bybit', listingDate: '5h ago',
+    price: '\$2.14', change: '+64%',
+    volumeSurge: '12x',
+    socialSentiment: 78, momentumScore: 72, potentialScore: 71,
+    riskLevel: 'Medium', narrative: 'AI',
+    aiReason: 'AI agent infrastructure play. Strong team with prior exits. '
+        'Trading volume suggests institutional interest in first 4 hours.',
+    whaleActivity: true, smartMoney: false,
+  ),
+  _Listing(
+    symbol: 'RWAX', name: 'RWA Exchange', emoji: '🏦',
+    exchange: 'Binance', listingDate: '12h ago',
+    price: '\$0.42', change: '+38%',
+    volumeSurge: '8x',
+    socialSentiment: 65, momentumScore: 60, potentialScore: 68,
+    riskLevel: 'Medium', narrative: 'RWA',
+    aiReason: 'Real-world asset tokenization narrative with major bank partnerships. '
+        'Fundamentally strong with real revenue. Lower risk vs meme plays.',
+    whaleActivity: false, smartMoney: true,
+  ),
+  _Listing(
+    symbol: 'GMFI', name: 'GameFi Protocol', emoji: '🎮',
+    exchange: 'Bybit', listingDate: '1d ago',
+    price: '\$0.18', change: '+12%',
+    volumeSurge: '3x',
+    socialSentiment: 48, momentumScore: 42, potentialScore: 45,
+    riskLevel: 'Low', narrative: 'Gaming',
+    aiReason: 'Solid gaming infrastructure with 200K beta users. '
+        'Early momentum has slowed. Good for accumulation if narrative revives.',
+    whaleActivity: false, smartMoney: false,
+  ),
+];
 
 class _Listing {
   final String symbol, name, emoji, exchange, listingDate;
@@ -135,6 +141,8 @@ class _Listing {
 }
 
 class _Header extends StatelessWidget {
+  const _Header();
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -164,7 +172,11 @@ class _FilterRow extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onChanged;
 
-  const _FilterRow({required this.filters, required this.selected, required this.onChanged});
+  const _FilterRow({
+    required this.filters,
+    required this.selected,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +193,9 @@ class _FilterRow extends StatelessWidget {
               color: selected == f ? AppColors.brandGreen.withAlpha(20) : AppColors.bgCard,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: selected == f ? AppColors.brandGreen.withAlpha(60) : AppColors.borderSubtle,
+                color: selected == f
+                    ? AppColors.brandGreen.withAlpha(60)
+                    : AppColors.borderSubtle,
               ),
             ),
             child: Text(f, style: TextStyle(
@@ -207,7 +221,7 @@ class _ListingCard extends StatelessWidget {
             ? AppColors.brandAmber
             : AppColors.brandGreen;
 
-    final narrativeColor = const {
+    const narrativeColor = {
       'Meme': AppColors.brandGreen,
       'AI': AppColors.brandPurple,
       'DeFi': AppColors.brandBlue,
@@ -219,7 +233,6 @@ class _ListingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top row
           Row(
             children: [
               Container(
@@ -277,10 +290,7 @@ class _ListingCard extends StatelessWidget {
               ),
             ],
           ),
-
           const SizedBox(height: 16),
-
-          // Scores
           Row(
             children: [
               _Score('Social', listing.socialSentiment, AppColors.brandBlue),
@@ -290,10 +300,7 @@ class _ListingCard extends StatelessWidget {
               _Score('AI Score', listing.potentialScore, AppColors.brandGreen),
             ],
           ),
-
           const SizedBox(height: 12),
-
-          // Stats row
           Row(
             children: [
               _StatPill('Vol Surge', listing.volumeSurge, AppColors.brandCyan),
@@ -311,12 +318,9 @@ class _ListingCard extends StatelessWidget {
               ],
             ],
           ),
-
           const SizedBox(height: 12),
           const Divider(color: AppColors.borderSubtle, height: 1),
           const SizedBox(height: 12),
-
-          // AI Reason
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

@@ -1,22 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
+import '../../providers/profile_provider.dart';
 
-class ProfileScreen extends StatefulWidget {
+// Outer build is static — ProfileCard, SubscriptionCard, ExchangeConnections never rebuild
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  bool _darkMode = true;
-  bool _notifications = true;
-  bool _twoFA = false;
-  String _aiPersonality = 'Direct';
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: SingleChildScrollView(
@@ -24,36 +17,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
+            // Left column — fully static, no reactive state
+            const Expanded(
               child: Column(
                 children: [
                   _ProfileCard(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   _SubscriptionCard(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   _ExchangeConnections(),
                 ],
               ),
             ),
             const SizedBox(width: 16),
+            // Right column — each card has its own Consumer, rebuilds independently
             Expanded(
               child: Column(
                 children: [
-                  _SettingsCard(
-                    darkMode: _darkMode,
-                    notifications: _notifications,
-                    onDarkChanged: (v) => setState(() => _darkMode = v),
-                    onNotifChanged: (v) => setState(() => _notifications = v),
+                  // Rebuilds only when darkMode or notifications changes
+                  Consumer(
+                    builder: (_, ref, __) {
+                      final darkMode = ref.watch(
+                        profileProvider.select((n) => n.darkMode),
+                      );
+                      final notifications = ref.watch(
+                        profileProvider.select((n) => n.notifications),
+                      );
+                      return _SettingsCard(
+                        darkMode: darkMode,
+                        notifications: notifications,
+                        onDarkChanged: (v) =>
+                            ref.read(profileProvider).setDarkMode(v),
+                        onNotifChanged: (v) =>
+                            ref.read(profileProvider).setNotifications(v),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
-                  _SecurityCard(
-                    twoFA: _twoFA,
-                    onTwoFAChanged: (v) => setState(() => _twoFA = v),
+                  // Rebuilds only when twoFA changes
+                  Consumer(
+                    builder: (_, ref, __) {
+                      final twoFA = ref.watch(
+                        profileProvider.select((n) => n.twoFA),
+                      );
+                      return _SecurityCard(
+                        twoFA: twoFA,
+                        onTwoFAChanged: (v) =>
+                            ref.read(profileProvider).setTwoFA(v),
+                      );
+                    },
                   ),
                   const SizedBox(height: 16),
-                  _AiPersonalizationCard(
-                    personality: _aiPersonality,
-                    onChanged: (v) => setState(() => _aiPersonality = v),
+                  // Rebuilds only when aiPersonality changes
+                  Consumer(
+                    builder: (_, ref, __) {
+                      final personality = ref.watch(
+                        profileProvider.select((n) => n.aiPersonality),
+                      );
+                      return _AiPersonalizationCard(
+                        personality: personality,
+                        onChanged: (v) =>
+                            ref.read(profileProvider).setAiPersonality(v),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -66,6 +92,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 class _ProfileCard extends StatelessWidget {
+  const _ProfileCard();
+
   @override
   Widget build(BuildContext context) {
     return GlassCard(
@@ -93,8 +121,11 @@ class _ProfileCard extends StatelessWidget {
                   fontSize: 12, color: AppColors.textMuted,
                 )),
                 const SizedBox(height: 4),
-                NeonBadge(label: 'Pro Plan', color: AppColors.brandGreen,
-                  icon: Icons.verified_rounded),
+                NeonBadge(
+                  label: 'Pro Plan',
+                  color: AppColors.brandGreen,
+                  icon: Icons.verified_rounded,
+                ),
               ],
             ),
           ),
@@ -116,6 +147,8 @@ class _ProfileCard extends StatelessWidget {
 }
 
 class _SubscriptionCard extends StatelessWidget {
+  const _SubscriptionCard();
+
   @override
   Widget build(BuildContext context) {
     return GlassCard(
@@ -206,6 +239,8 @@ class _UsageBar extends StatelessWidget {
 }
 
 class _ExchangeConnections extends StatelessWidget {
+  const _ExchangeConnections();
+
   @override
   Widget build(BuildContext context) {
     return GlassCard(
@@ -225,7 +260,8 @@ class _ExchangeConnections extends StatelessWidget {
                     Icon(Icons.add_rounded, size: 14, color: AppColors.brandGreen),
                     SizedBox(width: 4),
                     Text('Connect', style: TextStyle(
-                      fontSize: 11, color: AppColors.brandGreen, fontWeight: FontWeight.w600,
+                      fontSize: 11, color: AppColors.brandGreen,
+                      fontWeight: FontWeight.w600,
                     )),
                   ],
                 ),
@@ -243,9 +279,8 @@ class _ExchangeConnections extends StatelessWidget {
 }
 
 class _ExchangeRow extends StatelessWidget {
-  final String name;
+  final String name, status;
   final bool connected;
-  final String status;
   const _ExchangeRow(this.name, this.connected, this.status);
 
   @override
@@ -281,7 +316,8 @@ class _ExchangeRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: (connected ? AppColors.brandGreen : AppColors.textDisabled).withAlpha(20),
+              color: (connected ? AppColors.brandGreen : AppColors.textDisabled)
+                  .withAlpha(20),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -318,7 +354,8 @@ class _SettingsCard extends StatelessWidget {
           )),
           const SizedBox(height: 12),
           _ToggleRow('Dark Mode', darkMode, onDarkChanged, Icons.dark_mode_rounded),
-          _ToggleRow('Push Notifications', notifications, onNotifChanged, Icons.notifications_rounded),
+          _ToggleRow('Push Notifications', notifications, onNotifChanged,
+            Icons.notifications_rounded),
         ],
       ),
     );
