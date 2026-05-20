@@ -11,6 +11,11 @@ import '../features/trade_journal/trade_journal_screen.dart';
 import '../features/ai_chat/ai_chat_screen.dart';
 import '../features/alerts/alerts_screen.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/trade_now/trade_now_screen.dart';
+import '../features/token_unlocks/token_unlocks_screen.dart';
+import '../features/onchain/onchain_screen.dart';
+import '../features/orderbook/orderbook_screen.dart';
+import '../features/portfolio/portfolio_screen.dart';
 import '../core/widgets/app_shell.dart';
 
 final router = GoRouter(
@@ -20,11 +25,16 @@ final router = GoRouter(
       builder: (context, state, child) => AppShell(child: child),
       routes: [
         GoRoute(path: '/dashboard', builder: (c, s) => const DashboardScreen()),
+        GoRoute(path: '/trade-now', builder: (c, s) => const TradeNowScreen()),
         GoRoute(path: '/analysis', builder: (c, s) => const AiAnalysisScreen()),
         GoRoute(path: '/charts', builder: (c, s) => const ChartsScreen()),
         GoRoute(path: '/memory', builder: (c, s) => const MarketMemoryScreen()),
         GoRoute(path: '/sentiment', builder: (c, s) => const NewsSentimentScreen()),
         GoRoute(path: '/listings', builder: (c, s) => const NewListingsScreen()),
+        GoRoute(path: '/orderbook', builder: (c, s) => const OrderbookScreen()),
+        GoRoute(path: '/onchain', builder: (c, s) => const OnchainScreen()),
+        GoRoute(path: '/token-unlocks', builder: (c, s) => const TokenUnlocksScreen()),
+        GoRoute(path: '/portfolio', builder: (c, s) => const PortfolioScreen()),
         GoRoute(path: '/risk', builder: (c, s) => const RiskManagementScreen()),
         GoRoute(path: '/journal', builder: (c, s) => const TradeJournalScreen()),
         GoRoute(path: '/chat', builder: (c, s) => const AiChatScreen()),

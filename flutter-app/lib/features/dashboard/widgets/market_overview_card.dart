@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/glass_card.dart';
+import '../../../providers/ai_analysis_provider.dart';
 
 class _CoinData {
   final String symbol;
@@ -62,11 +65,11 @@ const _coins = [
   ),
 ];
 
-class MarketOverviewCards extends StatelessWidget {
+class MarketOverviewCards extends ConsumerWidget {
   const MarketOverviewCards({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final width = MediaQuery.of(context).size.width;
     final crossCount = width >= 1200 ? 4 : width >= 768 ? 2 : 1;
 
@@ -77,19 +80,26 @@ class MarketOverviewCards extends StatelessWidget {
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
       childAspectRatio: 1.8,
-      children: _coins.map((coin) => _CoinCard(coin: coin)).toList(),
+      children: _coins.map((coin) => _CoinCard(
+        coin: coin,
+        onTap: () {
+          ref.read(aiAnalysisProvider).selectCoin(coin.symbol);
+          context.go('/analysis');
+        },
+      )).toList(),
     );
   }
 }
 
 class _CoinCard extends StatelessWidget {
   final _CoinData coin;
-  const _CoinCard({super.key, required this.coin});
+  final VoidCallback onTap;
+  const _CoinCard({super.key, required this.coin, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      onTap: () {},
+      onTap: onTap,
       child: Row(
         children: [
           // Coin icon

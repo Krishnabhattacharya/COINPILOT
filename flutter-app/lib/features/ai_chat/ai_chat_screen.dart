@@ -43,59 +43,63 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
-      body: Row(
-        children: [
-          // Chat area — header and input are static; only the list rebuilds
-          Expanded(
-            child: Column(
-              children: [
-                const _ChatHeader(),
-                // Rebuilds only when messages or isTyping changes
-                Expanded(
-                  child: Consumer(
-                    builder: (_, ref, __) {
-                      final messages = ref.watch(
-                        aiChatProvider.select((n) => n.messages),
-                      );
-                      final isTyping = ref.watch(
-                        aiChatProvider.select((n) => n.isTyping),
-                      );
-                      return ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(20),
-                        itemCount: messages.length + (isTyping ? 1 : 0),
-                        itemBuilder: (_, i) {
-                          if (i == messages.length) {
-                            return const _TypingIndicator();
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: _ChatMessage(message: messages[i]),
-                          );
-                        },
-                      );
-                    },
+      body: LayoutBuilder(builder: (_, c) {
+        final isMobile = c.maxWidth < 700;
+        return Row(
+          children: [
+            // Chat area — header and input are static; only the list rebuilds
+            Expanded(
+              child: Column(
+                children: [
+                  const _ChatHeader(),
+                  // Rebuilds only when messages or isTyping changes
+                  Expanded(
+                    child: Consumer(
+                      builder: (_, ref, __) {
+                        final messages = ref.watch(
+                          aiChatProvider.select((n) => n.messages),
+                        );
+                        final isTyping = ref.watch(
+                          aiChatProvider.select((n) => n.isTyping),
+                        );
+                        return ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(20),
+                          itemCount: messages.length + (isTyping ? 1 : 0),
+                          itemBuilder: (_, i) {
+                            if (i == messages.length) {
+                              return const _TypingIndicator();
+                            }
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: _ChatMessage(message: messages[i]),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
-                ),
-                _ChatInput(controller: _controller, onSend: _send),
-              ],
+                  _ChatInput(controller: _controller, onSend: _send),
+                ],
+              ),
             ),
-          ),
 
-          // Suggested sidebar — fully static
-          Container(
-            width: 260,
-            decoration: const BoxDecoration(
-              color: AppColors.bgSecondary,
-              border: Border(left: BorderSide(color: AppColors.borderSubtle)),
-            ),
-            child: _SuggestedPanel(
-              prompts: _suggested,
-              onTap: _send,
-            ),
-          ),
-        ],
-      ),
+            // Suggested sidebar — hidden on mobile
+            if (!isMobile)
+              Container(
+                width: 260,
+                decoration: const BoxDecoration(
+                  color: AppColors.bgSecondary,
+                  border: Border(left: BorderSide(color: AppColors.borderSubtle)),
+                ),
+                child: _SuggestedPanel(
+                  prompts: _suggested,
+                  onTap: _send,
+                ),
+              ),
+          ],
+        );
+      }),
     );
   }
 

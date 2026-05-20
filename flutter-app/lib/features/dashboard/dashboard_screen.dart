@@ -36,38 +36,74 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 20),
 
                 // AI Summary + Fear & Greed
-                const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 3, child: AiSummaryCard()),
-                    SizedBox(width: 16),
-                    Expanded(flex: 2, child: FearGreedWidget()),
-                  ],
-                ),
+                LayoutBuilder(builder: (_, c) {
+                  if (c.maxWidth < 700) {
+                    return const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AiSummaryCard(),
+                        SizedBox(height: 16),
+                        FearGreedWidget(),
+                      ],
+                    );
+                  }
+                  return const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 3, child: AiSummaryCard()),
+                      SizedBox(width: 16),
+                      Expanded(flex: 2, child: FearGreedWidget()),
+                    ],
+                  );
+                }),
                 const SizedBox(height: 20),
 
                 // Funding + Portfolio
-                const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: FundingRatePanel()),
-                    SizedBox(width: 16),
-                    Expanded(child: PortfolioOverview()),
-                  ],
-                ),
+                LayoutBuilder(builder: (_, c) {
+                  if (c.maxWidth < 700) {
+                    return const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        FundingRatePanel(),
+                        SizedBox(height: 16),
+                        PortfolioOverview(),
+                      ],
+                    );
+                  }
+                  return const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: FundingRatePanel()),
+                      SizedBox(width: 16),
+                      Expanded(child: PortfolioOverview()),
+                    ],
+                  );
+                }),
                 const SizedBox(height: 20),
 
                 // Trending + Whale Alerts
                 const SectionHeader(title: 'Trending & Whale Activity'),
                 const SizedBox(height: 12),
-                const Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: TrendingCoins()),
-                    SizedBox(width: 16),
-                    Expanded(child: WhaleAlerts()),
-                  ],
-                ),
+                LayoutBuilder(builder: (_, c) {
+                  if (c.maxWidth < 700) {
+                    return const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TrendingCoins(),
+                        SizedBox(height: 16),
+                        WhaleAlerts(),
+                      ],
+                    );
+                  }
+                  return const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: TrendingCoins()),
+                      SizedBox(width: 16),
+                      Expanded(child: WhaleAlerts()),
+                    ],
+                  );
+                }),
                 const SizedBox(height: 40),
               ]),
             ),

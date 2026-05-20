@@ -334,16 +334,340 @@ class _TwitterMetric extends StatelessWidget {
   }
 }
 
+class _RedditPost {
+  final String subreddit, title, body, sentiment, time;
+  final int upvotes, comments;
+  const _RedditPost(this.subreddit, this.title, this.body, this.sentiment, this.time, this.upvotes, this.comments);
+}
+
 class _RedditTab extends StatelessWidget {
+  static const _stats = [
+    _TwitterMetric('74%', 'Bullish Posts', AppColors.brandGreen),
+    _TwitterMetric('48.2K', 'r/Bitcoin Mentions', AppColors.brandBlue),
+    _TwitterMetric('+31%', 'Volume vs 7d Avg', AppColors.brandAmber),
+  ];
+
+  static const _posts = [
+    _RedditPost('r/Bitcoin', 'BTC broke the descending trendline on daily — this is it',
+      'Just broke through the trendline that\'s been holding us down for 3 weeks. Volume confirming. We could see \$102K before any significant pullback. Accumulating here.',
+      'bullish', '1h ago', 4820, 312),
+    _RedditPost('r/CryptoCurrency', 'ETF inflows hit \$842M today — institutions are not done',
+      'BlackRock alone added over 8,700 BTC today. Fidelity added another 4,200. This is relentless demand. Supply on exchanges keeps dropping. This math is simple.',
+      'bullish', '3h ago', 3140, 218),
+    _RedditPost('r/ethfinance', 'ETH still lagging BTC — ETH/BTC ratio looks ready to break out',
+      'The ETH/BTC ratio has been compressing for months. Historically this level precedes an ETH outperformance period. Watching the 0.040 level closely.',
+      'neutral', '5h ago', 1890, 167),
+    _RedditPost('r/SatoshiStreetBets', 'SOL short squeeze incoming — funding negative, shorts piling in',
+      'Funding rate went negative this morning. Shorts are crowded at this level. Every time we\'ve seen this setup on SOL it squeezed hard within 48 hours.',
+      'bullish', '7h ago', 2640, 189),
+    _RedditPost('r/Bitcoin', 'Careful — we\'re at historical overbought levels, don\'t FOMO',
+      'Not saying we crash, but RSI on the weekly is at 78. The last two times we were here we corrected 15-20% before continuing higher. Don\'t put in money you need.',
+      'bearish', '10h ago', 5280, 441),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Reddit Sentiment', style: TextStyle(color: Colors.white)));
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Reddit Sentiment', style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white,
+              )),
+              const SizedBox(height: 16),
+              Row(
+                children: _stats.asMap().entries.map((e) {
+                  final s = e.value;
+                  return Expanded(
+                    child: Container(
+                      margin: EdgeInsets.only(right: e.key < _stats.length - 1 ? 12 : 0),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: s.color.withAlpha(10),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: s.color.withAlpha(25)),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(s.value, style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w800, color: s.color,
+                            fontFamily: 'JetBrainsMono',
+                          )),
+                          Text(s.label, style: const TextStyle(
+                            fontSize: 9, color: AppColors.textMuted), textAlign: TextAlign.center),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        ..._posts.map((p) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _RedditCard(post: p),
+        )),
+      ],
+    );
   }
 }
 
-class _WhaleTab extends StatelessWidget {
+class _RedditCard extends StatelessWidget {
+  final _RedditPost post;
+  const _RedditCard({super.key, required this.post});
+
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Whale Activity', style: TextStyle(color: Colors.white)));
+    final color = post.sentiment == 'bullish'
+        ? AppColors.brandGreen
+        : post.sentiment == 'bearish' ? AppColors.brandRed : AppColors.brandAmber;
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.brandRed.withAlpha(15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(post.subreddit, style: const TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.brandRed,
+                )),
+              ),
+              const Spacer(),
+              Text(post.time, style: const TextStyle(fontSize: 10, color: AppColors.textDisabled)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(post.title, style: const TextStyle(
+            fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white, height: 1.3,
+          )),
+          const SizedBox(height: 6),
+          Text(post.body, style: const TextStyle(
+            fontSize: 11, color: AppColors.textMuted, height: 1.5,
+          ), maxLines: 3, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.arrow_upward_rounded, size: 13, color: AppColors.brandAmber),
+              const SizedBox(width: 4),
+              Text('${post.upvotes}', style: const TextStyle(
+                fontSize: 11, color: AppColors.textMuted,
+              )),
+              const SizedBox(width: 12),
+              Icon(Icons.chat_bubble_outline_rounded, size: 13, color: AppColors.textMuted),
+              const SizedBox(width: 4),
+              Text('${post.comments}', style: const TextStyle(
+                fontSize: 11, color: AppColors.textMuted,
+              )),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: color.withAlpha(15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(post.sentiment.toUpperCase(), style: TextStyle(
+                  fontSize: 9, fontWeight: FontWeight.w700, color: color, letterSpacing: 0.5,
+                )),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WhaleAlert {
+  final String symbol, amount, usdValue, from, to, time, type;
+  final bool isBearish;
+  const _WhaleAlert(this.symbol, this.amount, this.usdValue, this.from, this.to, this.time, this.type, this.isBearish);
+}
+
+class _WhaleTab extends StatelessWidget {
+  static const _alerts = [
+    _WhaleAlert('BTC', '2,840', '\$276.8M', 'Unknown Wallet', 'Binance', '4m', 'Exchange Deposit', true),
+    _WhaleAlert('ETH', '18,420', '\$70.8M', 'Coinbase Custody', 'Unknown', '12m', 'Exchange Withdrawal', false),
+    _WhaleAlert('USDT', '85,000,000', '\$85.0M', 'Tether Treasury', 'Unknown', '28m', 'Mint', false),
+    _WhaleAlert('BTC', '1,200', '\$117.0M', 'Kraken', 'Unknown', '45m', 'Exchange Withdrawal', false),
+    _WhaleAlert('ETH', '9,800', '\$37.7M', 'Unknown', 'Coinbase', '1h', 'Exchange Deposit', true),
+    _WhaleAlert('SOL', '220,000', '\$40.5M', 'Unknown', 'OKX', '1.5h', 'Exchange Deposit', true),
+    _WhaleAlert('BTC', '680', '\$66.2M', 'Unknown', 'Bybit', '2h', 'Exchange Deposit', true),
+    _WhaleAlert('USDT', '50,000,000', '\$50.0M', 'Unknown', 'Binance', '3h', 'Stablecoin Transfer', false),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final deposits = _alerts.where((a) => a.type == 'Exchange Deposit').length;
+    final withdrawals = _alerts.where((a) => a.type == 'Exchange Withdrawal').length;
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('Whale Activity Summary', style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white,
+                  )),
+                  const Spacer(),
+                  NeonBadge(label: 'LIVE', color: AppColors.brandGreen, icon: Icons.circle),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  _WhaleStat('$deposits', 'Exchange Deposits', AppColors.brandRed),
+                  const SizedBox(width: 12),
+                  _WhaleStat('$withdrawals', 'Withdrawals', AppColors.brandGreen),
+                  const SizedBox(width: 12),
+                  _WhaleStat('\$744M', 'Total Moved (3h)', AppColors.brandAmber),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.brandAmber.withAlpha(10),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.brandAmber.withAlpha(25)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.psychology_rounded, size: 14, color: AppColors.brandAmber),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'AI: Net exchange deposits outpacing withdrawals. Monitor for potential sell pressure. Watch BTC at \$94,200 support.',
+                        style: TextStyle(fontSize: 11, color: AppColors.textMuted, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        ..._alerts.map((a) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _WhaleAlertCard(alert: a),
+        )),
+      ],
+    );
+  }
+}
+
+class _WhaleStat extends StatelessWidget {
+  final String value, label;
+  final Color color;
+  const _WhaleStat(this.value, this.label, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withAlpha(10),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withAlpha(25)),
+        ),
+        child: Column(
+          children: [
+            Text(value, style: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.w800, color: color,
+              fontFamily: 'JetBrainsMono',
+            )),
+            Text(label, style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
+              textAlign: TextAlign.center),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WhaleAlertCard extends StatelessWidget {
+  final _WhaleAlert alert;
+  const _WhaleAlertCard({super.key, required this.alert});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = alert.isBearish ? AppColors.brandRed
+        : alert.type == 'Mint' ? AppColors.brandPurple
+        : AppColors.brandGreen;
+
+    return GlassCard(
+      child: Row(
+        children: [
+          Container(
+            width: 40, height: 40,
+            decoration: BoxDecoration(
+              color: color.withAlpha(15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(alert.isBearish ? '🐋' : alert.type == 'Mint' ? '🏦' : '🐳',
+                style: const TextStyle(fontSize: 18)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('${alert.amount} ${alert.symbol}', style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
+                    )),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: color.withAlpha(15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(alert.type, style: TextStyle(
+                        fontSize: 8, fontWeight: FontWeight.w700, color: color,
+                      )),
+                    ),
+                  ],
+                ),
+                Text('${alert.from} → ${alert.to}', style: const TextStyle(
+                  fontSize: 10, color: AppColors.textMuted,
+                )),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(alert.usdValue, style: TextStyle(
+                fontSize: 13, fontWeight: FontWeight.w700,
+                color: color, fontFamily: 'JetBrainsMono',
+              )),
+              Text(alert.time + ' ago', style: const TextStyle(
+                fontSize: 10, color: AppColors.textDisabled,
+              )),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -27,6 +27,8 @@ class AppSidebar extends StatelessWidget {
                 children: [
                   _SectionLabel('OVERVIEW'),
                   _SidebarItem('/dashboard', Icons.dashboard_rounded, 'Dashboard', currentRoute),
+                  _SidebarItem('/trade-now', Icons.bolt_rounded, 'Trade Now?', currentRoute,
+                    badge: 'SIGNAL'),
                   const SizedBox(height: 16),
                   _SectionLabel('AI INTELLIGENCE'),
                   _SidebarItem('/analysis', Icons.psychology_rounded, 'AI Analysis', currentRoute),
@@ -35,11 +37,17 @@ class AppSidebar extends StatelessWidget {
                   const SizedBox(height: 16),
                   _SectionLabel('MARKET'),
                   _SidebarItem('/charts', Icons.candlestick_chart_rounded, 'Charts', currentRoute),
+                  _SidebarItem('/orderbook', Icons.menu_rounded, 'Order Book', currentRoute),
                   _SidebarItem('/sentiment', Icons.sentiment_satisfied_rounded, 'Sentiment', currentRoute),
                   _SidebarItem('/listings', Icons.new_releases_rounded, 'New Listings', currentRoute,
                     badge: 'HOT'),
                   const SizedBox(height: 16),
+                  _SectionLabel('ON-CHAIN'),
+                  _SidebarItem('/onchain', Icons.account_tree_rounded, 'Exchange Flows', currentRoute),
+                  _SidebarItem('/token-unlocks', Icons.lock_open_rounded, 'Token Unlocks', currentRoute),
+                  const SizedBox(height: 16),
                   _SectionLabel('TRADING'),
+                  _SidebarItem('/portfolio', Icons.pie_chart_rounded, 'Portfolio', currentRoute),
                   _SidebarItem('/risk', Icons.shield_rounded, 'Risk Manager', currentRoute),
                   _SidebarItem('/journal', Icons.book_rounded, 'Trade Journal', currentRoute),
                   _SidebarItem('/alerts', Icons.notifications_rounded, 'Alerts', currentRoute, badge: '3'),
@@ -150,6 +158,7 @@ class _SidebarItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = currentRoute == route;
+    final isSignal = badge == 'SIGNAL';
 
     return GestureDetector(
       onTap: () => context.go(route),
@@ -186,9 +195,11 @@ class _SidebarItem extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: badge == 'HOT'
+                  color: isSignal
                       ? AppColors.brandGreen.withOpacity(0.15)
-                      : AppColors.brandRed.withOpacity(0.15),
+                      : badge == 'HOT'
+                          ? AppColors.brandGreen.withOpacity(0.15)
+                          : AppColors.brandRed.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -196,7 +207,9 @@ class _SidebarItem extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
-                    color: badge == 'HOT' ? AppColors.brandGreen : AppColors.brandRed,
+                    color: isSignal || badge == 'HOT'
+                        ? AppColors.brandGreen
+                        : AppColors.brandRed,
                   ),
                 ),
               ),

@@ -118,51 +118,76 @@ class _ChartHeader extends StatelessWidget {
     required this.onIndicatorChanged,
   });
 
+  Widget _timeframeButtons() => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: timeframes.map((t) => GestureDetector(
+      onTap: () => onTimeframeChanged(t),
+      child: Container(
+        margin: const EdgeInsets.only(left: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: timeframe == t ? AppColors.brandGreen.withAlpha(20) : AppColors.bgCard,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: timeframe == t
+                ? AppColors.brandGreen.withAlpha(60)
+                : AppColors.borderSubtle,
+          ),
+        ),
+        child: Text(t, style: TextStyle(
+          fontSize: 11, fontWeight: FontWeight.w600,
+          color: timeframe == t ? AppColors.brandGreen : AppColors.textMuted,
+        )),
+      ),
+    )).toList(),
+  );
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Column(
+    return LayoutBuilder(builder: (_, c) {
+      final isMobile = c.maxWidth < 700;
+      const titleBlock = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('BTC/USDT', style: TextStyle(
+            fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white,
+          )),
+          Row(children: [
+            Text('\$97,420.00', style: TextStyle(
+              fontSize: 14, fontWeight: FontWeight.w700,
+              color: AppColors.brandGreen, fontFamily: 'JetBrainsMono',
+            )),
+            SizedBox(width: 8),
+            Text('+2.4% (24h)', style: TextStyle(
+              fontSize: 12, color: AppColors.brandGreen,
+            )),
+          ]),
+        ],
+      );
+
+      if (isMobile) {
+        return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('BTC/USDT', style: TextStyle(
-              fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white,
-            )),
-            Row(children: [
-              Text('\$97,420.00', style: TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w700,
-                color: AppColors.brandGreen, fontFamily: 'JetBrainsMono',
-              )),
-              SizedBox(width: 8),
-              Text('+2.4% (24h)', style: TextStyle(
-                fontSize: 12, color: AppColors.brandGreen,
-              )),
-            ]),
-          ],
-        ),
-        const Spacer(),
-        ...timeframes.map((t) => GestureDetector(
-          onTap: () => onTimeframeChanged(t),
-          child: Container(
-            margin: const EdgeInsets.only(left: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: timeframe == t ? AppColors.brandGreen.withAlpha(20) : AppColors.bgCard,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: timeframe == t
-                    ? AppColors.brandGreen.withAlpha(60)
-                    : AppColors.borderSubtle,
-              ),
+            titleBlock,
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: _timeframeButtons(),
             ),
-            child: Text(t, style: TextStyle(
-              fontSize: 11, fontWeight: FontWeight.w600,
-              color: timeframe == t ? AppColors.brandGreen : AppColors.textMuted,
-            )),
-          ),
-        )),
-      ],
-    );
+          ],
+        );
+      }
+
+      return Row(
+        children: [
+          titleBlock,
+          const Spacer(),
+          _timeframeButtons(),
+        ],
+      );
+    });
   }
 }
 
@@ -178,14 +203,23 @@ class _ChartToolbar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _ToolBtn(Icons.show_chart_rounded, 'Line'),
-          _ToolBtn(Icons.candlestick_chart_rounded, 'Candle', active: true),
-          _ToolBtn(Icons.bar_chart_rounded, 'Bar'),
-          const SizedBox(width: 16),
-          _ToolBtn(Icons.draw_rounded, 'Draw'),
-          _ToolBtn(Icons.horizontal_rule_rounded, 'Trend'),
-          _ToolBtn(Icons.grid_on_rounded, 'Fib'),
-          const Spacer(),
+          // Left tool buttons — scroll horizontally if screen is narrow
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _ToolBtn(Icons.show_chart_rounded, 'Line'),
+                  _ToolBtn(Icons.candlestick_chart_rounded, 'Candle', active: true),
+                  _ToolBtn(Icons.bar_chart_rounded, 'Bar'),
+                  const SizedBox(width: 16),
+                  _ToolBtn(Icons.draw_rounded, 'Draw'),
+                  _ToolBtn(Icons.horizontal_rule_rounded, 'Trend'),
+                  _ToolBtn(Icons.grid_on_rounded, 'Fib'),
+                ],
+              ),
+            ),
+          ),
           NeonBadge(
             label: 'AI Overlay ON',
             color: AppColors.brandGreen,
