@@ -10,7 +10,6 @@ import '../../../providers/ai_analysis_provider.dart';
 import '../../../providers/dashboard_provider.dart';
 import '../../../core/remote/web_socket_baseclass.dart';
 
-// Brand colors per well-known symbols
 Color _coinColor(String symbol) {
   const map = {
     'BTC': Color(0xFFF7931A),
@@ -50,77 +49,105 @@ class _MarketOverviewCardsState extends ConsumerState<MarketOverviewCards> {
     final liveAsync = ref.watch(tickerProvider);
     final live = liveAsync.valueOrNull ?? {};
 
-    final width = MediaQuery.of(context).size.width;
-    final isMobile = width < 768;
-    final crossCount = width >= 1200 ? 4 : isMobile ? 3 : 2;
-    final aspectRatio = isMobile ? 0.82 : 1.8;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final isMobile = width < 768;
 
-    // Show 2 rows initially; expand on demand
-    final visibleCount = _expanded ? coins.length : crossCount * 2;
-    final visible = coins.take(visibleCount).toList();
-    final hasMore = coins.length > crossCount * 2;
+        final crossCount = width >= 1400
+            ? 4
+            : width >= 900
+                ? 3
+                : width >= 600
+                    ? 2
+                    : 2;
 
-    return Column(
-      children: [
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: crossCount,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: aspectRatio,
-          children: visible.map((coin) {
-            final ticker = live['${coin.symbol}USDT'];
-            return _CoinCard(
-              coin: coin,
-              liveTicker: ticker,
-              compact: isMobile,
-              onTap: () {
-                ref.read(aiAnalysisProvider).selectCoin(coin.symbol);
-                context.go('/analysis');
-              },
-            );
-          }).toList(),
-        ),
-        if (hasMore) ...[
-          const SizedBox(height: 10),
-          GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.bgCard,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.borderSubtle),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _expanded
-                        ? 'Show Less'
-                        : 'See More (${coins.length - visibleCount} more)',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.brandGreen,
+        // Mobile: fixed pixel height per card so fl_chart always has room.
+        // Desktop: use aspect ratio as before.
+        final aspectRatio = isMobile
+            ? crossCount == 2
+                ? 0.85
+                : 0.68
+            : width >= 1200
+                ? 2.8
+                : 2.2;
+
+        final collapsedCount = crossCount * 2;
+        final visibleCount = _expanded ? coins.length : collapsedCount;
+        final visible = coins.take(visibleCount).toList();
+        final hasMore = coins.length > collapsedCount;
+
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: Column(
+              children: [
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: crossCount,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: aspectRatio,
+                  children: visible.map((coin) {
+                    final ticker = live['${coin.symbol}USDT'];
+                    return _CoinCard(
+                      coin: coin,
+                      liveTicker: ticker,
+                      compact: isMobile,
+                      onTap: () {
+                        ref.read(aiAnalysisProvider).selectCoin(coin.symbol);
+                        context.go('/analysis');
+                      },
+                    );
+                  }).toList(),
+                ),
+                if (hasMore) ...[
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: () => setState(() => _expanded = !_expanded),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.bgCard,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.borderSubtle),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _expanded
+                                  ? 'Show Less'
+                                  : 'See More (${coins.length - visibleCount} more)',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.brandGreen,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(
+                            _expanded
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                            size: 16,
+                            color: AppColors.brandGreen,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Icon(
-                    _expanded
-                        ? Icons.keyboard_arrow_up_rounded
-                        : Icons.keyboard_arrow_down_rounded,
-                    size: 16,
-                    color: AppColors.brandGreen,
-                  ),
                 ],
-              ),
+              ],
             ),
           ),
-        ],
-      ],
+        );
+      },
     );
   }
 
@@ -178,6 +205,7 @@ class _CoinCard extends StatelessWidget {
   final TickerUpdate? liveTicker;
   final bool compact;
   final VoidCallback onTap;
+
   const _CoinCard({
     required this.coin,
     this.liveTicker,
@@ -204,67 +232,114 @@ class _CoinCard extends StatelessWidget {
   Widget build(BuildContext context) =>
       compact ? _buildCompact() : _buildWide();
 
-  // ── Mobile: vertical card (3 per row) ───────────────────────
+  // ── Mobile: vertical card ────────────────────────────────────
   Widget _buildCompact() {
     final color = _coinColor(coin.symbol);
     final changeColor = _isPositive ? AppColors.brandGreen : AppColors.brandRed;
+
     return GlassCard(
       onTap: onTap,
       padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // KEY FIX: use 'start' not 'spaceBetween' so children
+        // are laid out top-to-bottom and nothing gets squished.
+        mainAxisAlignment: MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.max,
         children: [
+          // ── Top row: icon + change badge ──
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 30, height: 30,
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                     color: color.withAlpha(25), shape: BoxShape.circle),
                 child: Center(
-                  child: Text(coin.symbol[0],
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: color)),
+                  child: Text(
+                    coin.symbol[0],
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: color),
+                  ),
                 ),
               ),
+              const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                 decoration: BoxDecoration(
                   color: changeColor.withAlpha(25),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: Text(_changeText,
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'JetBrainsMono',
-                      color: changeColor,
-                    )),
+                child: Text(
+                  _changeText,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'JetBrainsMono',
+                    color: changeColor,
+                  ),
+                ),
               ),
             ],
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(coin.symbol,
-                  style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
-              const SizedBox(height: 2),
-              Text(_priceText,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                    fontFamily: 'JetBrainsMono',
-                  )),
-            ],
+
+          const SizedBox(height: 8),
+
+          // ── Symbol + price ──
+          Text(
+            coin.symbol,
+            style: const TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
           ),
+          const SizedBox(height: 2),
+          Text(
+            _priceText,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              fontFamily: 'JetBrainsMono',
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+
+          // ── Sparkline: Expanded fills remaining card height ──
+          if (coin.sparkline.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Expanded(
+              child: LineChart(
+                LineChartData(
+                  gridData: const FlGridData(show: false),
+                  titlesData: const FlTitlesData(show: false),
+                  borderData: FlBorderData(show: false),
+                  lineTouchData: const LineTouchData(enabled: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: coin.sparkline
+                          .asMap()
+                          .entries
+                          .map((e) => FlSpot(e.key.toDouble(), e.value))
+                          .toList(),
+                      isCurved: true,
+                      color: changeColor,
+                      barWidth: 1.5,
+                      isStrokeCapRound: true,
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: changeColor.withAlpha(20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -274,17 +349,22 @@ class _CoinCard extends StatelessWidget {
   Widget _buildWide() {
     final color = _coinColor(coin.symbol);
     final changeColor = _isPositive ? AppColors.brandGreen : AppColors.brandRed;
+
     return GlassCard(
       onTap: onTap,
       child: Row(
         children: [
           Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(color: color.withAlpha(25), shape: BoxShape.circle),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+                color: color.withAlpha(25), shape: BoxShape.circle),
             child: Center(
-              child: Text(coin.symbol[0],
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+              child: Text(
+                coin.symbol[0],
+                style: TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w800, color: color),
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -293,14 +373,18 @@ class _CoinCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(coin.symbol,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white)),
-                Text(coin.name,
-                    style: const TextStyle(
-                        fontSize: 10, color: AppColors.textMuted)),
+                Text(
+                  coin.symbol,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white),
+                ),
+                Text(
+                  coin.name,
+                  style:
+                      const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                ),
               ],
             ),
           ),
@@ -308,12 +392,14 @@ class _CoinCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(_priceText,
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      fontFamily: 'JetBrainsMono')),
+              Text(
+                _priceText,
+                style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    fontFamily: 'JetBrainsMono'),
+              ),
               const SizedBox(height: 2),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -321,44 +407,49 @@ class _CoinCard extends StatelessWidget {
                   color: changeColor.withAlpha(25),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(_changeText,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: 'JetBrainsMono',
-                      color: changeColor,
-                    )),
+                child: Text(
+                  _changeText,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'JetBrainsMono',
+                    color: changeColor,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(width: 12),
           if (coin.sparkline.isNotEmpty)
             SizedBox(
-              width: 60, height: 30,
-              child: LineChart(LineChartData(
-                gridData: const FlGridData(show: false),
-                titlesData: const FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                lineTouchData: const LineTouchData(enabled: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: coin.sparkline
-                        .asMap()
-                        .entries
-                        .map((e) => FlSpot(e.key.toDouble(), e.value))
-                        .toList(),
-                    isCurved: true,
-                    color: changeColor,
-                    barWidth: 1.5,
-                    isStrokeCapRound: true,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: changeColor.withAlpha(20),
+              width: 60,
+              height: 30,
+              child: LineChart(
+                LineChartData(
+                  gridData: const FlGridData(show: false),
+                  titlesData: const FlTitlesData(show: false),
+                  borderData: FlBorderData(show: false),
+                  lineTouchData: const LineTouchData(enabled: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: coin.sparkline
+                          .asMap()
+                          .entries
+                          .map((e) => FlSpot(e.key.toDouble(), e.value))
+                          .toList(),
+                      isCurved: true,
+                      color: changeColor,
+                      barWidth: 1.5,
+                      isStrokeCapRound: true,
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: changeColor.withAlpha(20),
+                      ),
                     ),
-                  ),
-                ],
-              )),
+                  ],
+                ),
+              ),
             ),
         ],
       ),

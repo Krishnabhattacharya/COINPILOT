@@ -27,6 +27,14 @@ class DashboardRepoImpl implements DashboardRepo {
       );
 
   @override
+  Future<List<MarketCoin>> searchMarketCoins(String query,
+          {int perPage = 10}) =>
+      _api.fetchList(
+        EndPoints.marketCoinsSearch(searchQuery: query, perPage: perPage),
+        MarketCoin.fromJson,
+      );
+
+  @override
   Future<FearGreedData> fetchFearGreed() async {
     // Fear & Greed can arrive as { data: [{value, value_classification}] }
     // (Alternative.me) or as { value, classification } (flat backend).

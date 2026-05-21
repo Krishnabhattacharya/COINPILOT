@@ -8,6 +8,7 @@ class EndPoints {
   static const String baseUrl = 'https://had-pampers-haste.ngrok-free.dev';
   static const String apiBaseUrl = '$baseUrl/api/v1';
   static const String dashboardBaseUrl = '$apiBaseUrl/dashboard';
+  static const String aiBaseUrl = '$baseUrl/api/ai';
 
   // Socket.IO
   static const String socketUrl = baseUrl;
@@ -42,6 +43,18 @@ class EndPoints {
   static const String exchangeInfo = '$dashboardBaseUrl/exchange-info';
 
   static const String fundingRates = '$dashboardBaseUrl/funding-rates';
+  static const String marketAiAnalysis = '$apiBaseUrl/analysis/market';
+
+  // ─────────────────────────────────────────────────────────────
+  // Trade Now — AI Analysis APIs
+  // ─────────────────────────────────────────────────────────────
+
+  static const String analysisSignal       = '$apiBaseUrl/analysis/signal';
+  static const String analysisSentiment    = '$apiBaseUrl/analysis/sentiment';
+  static const String analysisOpenInterest = '$apiBaseUrl/analysis/open-interest';
+  static const String analysisLongShort    = '$apiBaseUrl/analysis/long-short';
+  static const String analysisLiquidations = '$apiBaseUrl/analysis/liquidations';
+  static const String analysisHistory      = '$apiBaseUrl/analysis/history';
 
   // ─────────────────────────────────────────────────────────────
   // Dynamic Dashboard APIs
@@ -49,6 +62,10 @@ class EndPoints {
 
   static String coinDetails(String coinId) {
     return '$dashboardBaseUrl/coins/$coinId';
+  }
+
+  static String coinAiAnalysis(String coinId) {
+    return '$aiBaseUrl/analysis/$coinId';
   }
 
   static String coinOhlc(String coinId) {
@@ -82,6 +99,19 @@ class EndPoints {
     };
 
     return Uri.parse(marketCoins).replace(queryParameters: query).toString();
+  }
+
+  static String marketCoinsSearch({
+    String searchQuery = '',
+    int perPage = 10,
+    int page = 1,
+  }) {
+    final params = <String, String>{
+      'perPage': perPage.toString(),
+      'page': page.toString(),
+      if (searchQuery.isNotEmpty) 'query': searchQuery,
+    };
+    return Uri.parse(marketCoins).replace(queryParameters: params).toString();
   }
 
   static String klinesWithParams({
