@@ -46,6 +46,12 @@ final fundingRatesProvider = FutureProvider<List<FundingRate>>(
   (_) => _repo.fetchFundingRates(),
 );
 
+// Coin search provider — parameterized by query string
+final coinSearchProvider =
+    FutureProvider.family<List<MarketCoin>, String>((ref, query) {
+  return _repo.searchMarketCoins(query, perPage: 10);
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Live ticker stream  (Socket.IO market:miniTicker)
 // Map of symbol → TickerUpdate for O(1) lookup in widgets

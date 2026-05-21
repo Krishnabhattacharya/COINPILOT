@@ -138,7 +138,8 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.bgSecondary,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.borderSubtle),
@@ -164,7 +165,8 @@ class AppTheme {
           foregroundColor: Colors.black,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(
             fontFamily: 'Inter',
             fontSize: 14,
@@ -172,7 +174,7 @@ class AppTheme {
           ),
         ),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         color: AppColors.bgCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
