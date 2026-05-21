@@ -41,6 +41,149 @@ class TickerUpdate {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// LiveWhaleAlert  (dashboard:snapshot → whaleAlerts)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class LiveWhaleAlert {
+  final String symbol;
+  final double amount;
+  final double amountUsd;
+  final String from;
+  final String to;
+  final DateTime timestamp;
+
+  const LiveWhaleAlert({
+    required this.symbol,
+    required this.amount,
+    required this.amountUsd,
+    required this.from,
+    required this.to,
+    required this.timestamp,
+  });
+
+  static const _exchangeNames = {
+    'binance', 'coinbase', 'kraken', 'okx', 'bybit',
+    'huobi', 'kucoin', 'bitfinex', 'bitmex', 'gate',
+  };
+
+  bool get toExchange => _exchangeNames.contains(to.toLowerCase());
+
+  String get formattedAmount {
+    if (amount >= 1000000) return '${(amount / 1000000).toStringAsFixed(1)}M';
+    if (amount >= 1000) return '${(amount / 1000).toStringAsFixed(1)}K';
+    return amount.toStringAsFixed(2);
+  }
+
+  String get formattedUsd {
+    if (amountUsd >= 1e9) return '\$${(amountUsd / 1e9).toStringAsFixed(1)}B';
+    if (amountUsd >= 1e6) return '\$${(amountUsd / 1e6).toStringAsFixed(0)}M';
+    return '\$${amountUsd.toStringAsFixed(0)}';
+  }
+
+  String get emoji {
+    final s = symbol.toUpperCase();
+    if (s == 'BTC') return '🐋';
+    if (s == 'ETH') return '💎';
+    if (s.contains('USD') || s.contains('USDC')) return '🏦';
+    return '🐳';
+  }
+
+  factory LiveWhaleAlert.fromJson(Map<String, dynamic> json) {
+    String parseName(dynamic val) {
+      if (val is Map) return val['name']?.toString() ?? 'Unknown';
+      return val?.toString() ?? 'Unknown';
+    }
+
+    final tsRaw = json['timestamp'] as num?;
+    final ts = tsRaw != null
+        ? (tsRaw > 1e12
+            ? DateTime.fromMillisecondsSinceEpoch(tsRaw.toInt())
+            : DateTime.fromMillisecondsSinceEpoch(tsRaw.toInt() * 1000))
+        : DateTime.now();
+
+    return LiveWhaleAlert(
+      symbol: (json['symbol'] as String? ?? '').toUpperCase(),
+      amount: (json['amount'] as num?)?.toDouble() ?? 0,
+      amountUsd: (json['amount_usd'] ?? json['amountUsd'] as num?)?.toDouble() ?? 0,
+      from: parseName(json['from']),
+      to: parseName(json['to']),
+      timestamp: ts,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LiveFundingRate  (dashboard:snapshot → fundingRates)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class LiveFundingRate {
+  final String symbol;
+  final double rate;
+
+  const LiveFundingRate({required this.symbol, required this.rate});
+
+  bool get positive => rate >= 0;
+  String get formatted => '${positive ? '+' : ''}${(rate * 100).toStringAsFixed(3)}%';
+  bool get isHigh => rate.abs() > 0.0004;
+
+  String get interpretation {
+    if (rate < 0) return 'Shorts paying longs — bearish bias';
+    if (rate.abs() < 0.0001) return 'Neutral — balanced positioning';
+    if (rate.abs() < 0.0002) return 'Moderate long dominance';
+    if (rate.abs() < 0.0004) return 'High bullish sentiment';
+    return 'Very high — potential squeeze risk';
+  }
+
+  factory LiveFundingRate.fromJson(Map<String, dynamic> json) {
+    final raw = json['fundingRate'] ?? json['funding_rate'] ?? 0;
+    return LiveFundingRate(
+      symbol: json['symbol']?.toString() ?? '',
+      rate: double.tryParse(raw.toString()) ?? (raw as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KlineUpdate  (market:kline payload)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class KlineUpdate {
+  final String symbol;
+  final String interval;
+  final int openTime;
+  final double open;
+  final double high;
+  final double low;
+  final double close;
+  final double volume;
+  final bool isClosed;
+
+  const KlineUpdate({
+    required this.symbol,
+    required this.interval,
+    required this.openTime,
+    required this.open,
+    required this.high,
+    required this.low,
+    required this.close,
+    required this.volume,
+    required this.isClosed,
+  });
+
+  factory KlineUpdate.fromJson(Map<String, dynamic> j) => KlineUpdate(
+        symbol: j['symbol']?.toString() ?? '',
+        interval: j['interval']?.toString() ?? '',
+        openTime: (j['openTime'] as num?)?.toInt() ?? 0,
+        open: (j['open'] as num?)?.toDouble() ?? 0,
+        high: (j['high'] as num?)?.toDouble() ?? 0,
+        low: (j['low'] as num?)?.toDouble() ?? 0,
+        close: (j['close'] as num?)?.toDouble() ?? 0,
+        volume: (j['volume'] as num?)?.toDouble() ?? 0,
+        isClosed: j['isClosed'] as bool? ?? false,
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // DashboardSocket  — Socket.IO client for live dashboard data
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -49,61 +192,136 @@ class DashboardSocket {
   static final DashboardSocket instance = DashboardSocket._();
 
   sio.Socket? _socket;
+  String? _activeChartSymbol;
+  String _activeInterval = '1m';
 
-  // Broadcast streams — widgets subscribe to these
+  // ── Broadcast streams — widgets subscribe to these ────────────────────────
   final _tickerCtrl = StreamController<List<TickerUpdate>>.broadcast();
   final _snapshotCtrl = StreamController<Map<String, dynamic>>.broadcast();
+  final _whaleCtrl = StreamController<List<LiveWhaleAlert>>.broadcast();
+  final _fundingCtrl = StreamController<List<LiveFundingRate>>.broadcast();
+  final _klineCtrl = StreamController<KlineUpdate>.broadcast();
+  final _connectionCtrl = StreamController<bool>.broadcast();
 
   Stream<List<TickerUpdate>> get tickerStream => _tickerCtrl.stream;
   Stream<Map<String, dynamic>> get snapshotStream => _snapshotCtrl.stream;
+  Stream<List<LiveWhaleAlert>> get whaleStream => _whaleCtrl.stream;
+  Stream<List<LiveFundingRate>> get fundingStream => _fundingCtrl.stream;
+  Stream<KlineUpdate> get klineStream => _klineCtrl.stream;
+  Stream<bool> get connectionStream => _connectionCtrl.stream;
 
   bool get isConnected => _socket?.connected ?? false;
 
   void connect() {
     if (_socket != null) return; // already connecting / connected
 
+    print('[DashboardSocket] Connecting to ${EndPoints.socketUrl} with path ${EndPoints.socketPath}');
+
     _socket = sio.io(
       EndPoints.socketUrl,
       sio.OptionBuilder()
           .setPath(EndPoints.socketPath)
-          .setTransports(['websocket'])
+          .setTransports(['websocket', 'polling'])
+          .setExtraHeaders({'ngrok-skip-browser-warning': 'true'})
           .disableAutoConnect()
           .build(),
     );
 
     _socket!
       ..onConnect((_) {
-        log('[DashboardSocket] connected');
+        print('[DashboardSocket] connected successfully');
+        _connectionCtrl.add(true);
         _subscribe();
       })
       ..on('socket:connected', (data) {
-        log('[DashboardSocket] server ready: $data');
+        print('[DashboardSocket] server ready: $data');
       })
       ..on('dashboard:snapshot', (data) {
-        if (data is Map<String, dynamic>) {
-          _snapshotCtrl.add(data);
+        print('[DashboardSocket] received snapshot payload');
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data);
+          _snapshotCtrl.add(map);
+          _parseSnapshot(map);
+        } else {
+          print('[DashboardSocket] warning: snapshot payload is not a Map: $data');
         }
       })
       ..on('market:miniTicker', (data) {
         if (data is List) {
           final tickers = data
-              .whereType<Map<String, dynamic>>()
-              .map(TickerUpdate.fromJson)
+              .where((item) => item is Map)
+              .map((item) => TickerUpdate.fromJson(Map<String, dynamic>.from(item as Map)))
               .toList();
-          if (tickers.isNotEmpty) _tickerCtrl.add(tickers);
+          if (tickers.isNotEmpty) {
+            _tickerCtrl.add(tickers);
+          }
         }
       })
-      ..onDisconnect((_) => log('[DashboardSocket] disconnected'))
-      ..onError((e) => log('[DashboardSocket] error: $e'))
+      ..on('market:kline', (data) {
+        print('[DashboardSocket] received kline tick: $data');
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data);
+          _klineCtrl.add(KlineUpdate.fromJson(map));
+        } else {
+          print('[DashboardSocket] warning: kline payload is not a Map: $data');
+        }
+      })
+      ..onDisconnect((_) {
+        print('[DashboardSocket] disconnected');
+        _connectionCtrl.add(false);
+      })
+      ..onError((e) => print('[DashboardSocket] error: $e'))
       ..connect();
   }
 
+  void reconnect() {
+    disconnect();
+    connect();
+  }
+
   void _subscribe() {
+    final Set<String> allSymbols = {'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'DOGEUSDT'};
+    if (_activeChartSymbol != null && _activeChartSymbol!.isNotEmpty) {
+      allSymbols.add(_activeChartSymbol!.toUpperCase());
+    }
+
+    print('[DashboardSocket] Emitting subscribe for symbols: ${allSymbols.toList()} with interval $_activeInterval');
     _socket?.emit('dashboard:subscribe', {
-      'symbols': ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT'],
-      'klineInterval': '1m',
+      'symbols': allSymbols.toList(),
+      'klineInterval': _activeInterval,
       'includeSnapshot': true,
+      'includeWhales': true,
+      'includeFunding': true,
     });
+  }
+
+  void subscribeWithInterval(String symbol, String interval) {
+    _activeChartSymbol = symbol;
+    _activeInterval = interval;
+    _subscribe();
+  }
+
+  void _parseSnapshot(Map<String, dynamic> data) {
+    try {
+      if (data.containsKey('whaleAlerts') && data['whaleAlerts'] is List) {
+        final list = data['whaleAlerts'] as List;
+        final alerts = list
+            .where((item) => item is Map)
+            .map((item) => LiveWhaleAlert.fromJson(Map<String, dynamic>.from(item as Map)))
+            .toList();
+        _whaleCtrl.add(alerts);
+      }
+      if (data.containsKey('fundingRates') && data['fundingRates'] is List) {
+        final list = data['fundingRates'] as List;
+        final rates = list
+            .where((item) => item is Map)
+            .map((item) => LiveFundingRate.fromJson(Map<String, dynamic>.from(item as Map)))
+            .toList();
+        _fundingCtrl.add(rates);
+      }
+    } catch (e, stack) {
+      print('[DashboardSocket] Error parsing snapshot: $e\n$stack');
+    }
   }
 
   void disconnect() {
@@ -115,5 +333,9 @@ class DashboardSocket {
     disconnect();
     _tickerCtrl.close();
     _snapshotCtrl.close();
+    _whaleCtrl.close();
+    _fundingCtrl.close();
+    _klineCtrl.close();
+    _connectionCtrl.close();
   }
 }

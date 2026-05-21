@@ -2,22 +2,92 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../../core/remote/data/dashboard/models/dashboard_models.dart';
 import '../../../providers/dashboard_provider.dart';
+import '../../../core/remote/web_socket_baseclass.dart';
 
 class WhaleAlerts extends ConsumerWidget {
   const WhaleAlerts({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(dashboardSummaryProvider);
-    return async.when(
-      loading: _buildShimmer,
-      error: (_, __) => _buildContent(_fallback),
-      data: (s) => _buildContent(
-        s.whaleAlerts.isNotEmpty ? s.whaleAlerts : _fallback,
+    final liveAsync = ref.watch(liveWhaleProvider);
+    final summaryAsync = ref.watch(dashboardSummaryProvider);
+
+    final liveAlerts = liveAsync.value ?? const <LiveWhaleAlert>[];
+    final restAlerts = summaryAsync.valueOrNull?.whaleAlerts ?? _fallback;
+
+    final merged = <Widget>[];
+
+    // For live alerts, let's build the rows.
+    for (final a in liveAlerts) {
+      merged.add(
+        _AlertRow(
+          key: ValueKey('live_${a.symbol}_${a.amount}_${a.timestamp.millisecondsSinceEpoch}'),
+          symbol: a.symbol,
+          amount: a.amount,
+          amountUsd: a.amountUsd,
+          from: a.from,
+          to: a.to,
+          timestamp: a.timestamp,
+          toExchange: a.toExchange,
+          formattedAmount: a.formattedAmount,
+          emoji: a.emoji,
+          isLive: true,
+        ),
+      );
+    }
+
+    // Append rest alerts (avoiding duplicates based on symbol and timestamp)
+    for (final a in restAlerts) {
+      if (merged.length >= 5) break;
+      final isDuplicate = liveAlerts.any((la) =>
+          la.symbol == a.symbol &&
+          (la.timestamp.difference(a.timestamp).inSeconds.abs() < 5));
+      if (!isDuplicate) {
+        merged.add(
+          _AlertRow(
+            key: ValueKey('rest_${a.symbol}_${a.amount}_${a.timestamp.millisecondsSinceEpoch}'),
+            symbol: a.symbol,
+            amount: a.amount,
+            amountUsd: a.amountUsd,
+            from: a.from,
+            to: a.to,
+            timestamp: a.timestamp,
+            toExchange: a.toExchange,
+            formattedAmount: a.formattedAmount,
+            emoji: a.emoji,
+            isLive: false,
+          ),
+        );
+      }
+    }
+
+    final finalItems = merged.take(5).toList();
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: SectionHeader(
+                  title: 'Whale Alerts',
+                  subtitle: 'Large transactions · Real-time',
+                ),
+              ),
+              if (liveAlerts.isNotEmpty)
+                const NeonBadge(label: 'LIVE', color: AppColors.brandGreen),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...finalItems,
+        ],
       ),
     );
   }
@@ -30,19 +100,6 @@ class WhaleAlerts extends ConsumerWidget {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
     ),
   );
-
-  static Widget _buildContent(List<WhaleAlert> alerts) {
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(title: 'Whale Alerts', subtitle: 'Large transactions · Real-time'),
-          const SizedBox(height: 12),
-          ...alerts.take(5).map((a) => _AlertRow(alert: a)),
-        ],
-      ),
-    );
-  }
 
   static final _now = DateTime.now();
   static final _fallback = [
@@ -65,12 +122,34 @@ class WhaleAlerts extends ConsumerWidget {
 }
 
 class _AlertRow extends StatelessWidget {
-  final WhaleAlert alert;
-  const _AlertRow({super.key, required this.alert});
+  final String symbol;
+  final double amount;
+  final double amountUsd;
+  final String from;
+  final String to;
+  final DateTime timestamp;
+  final bool toExchange;
+  final String formattedAmount;
+  final String emoji;
+  final bool isLive;
+
+  const _AlertRow({
+    super.key,
+    required this.symbol,
+    required this.amount,
+    required this.amountUsd,
+    required this.from,
+    required this.to,
+    required this.timestamp,
+    required this.toExchange,
+    required this.formattedAmount,
+    required this.emoji,
+    required this.isLive,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    Widget row = Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
@@ -82,19 +161,19 @@ class _AlertRow extends StatelessWidget {
               border: Border.all(color: AppColors.borderSubtle),
             ),
             child: Center(
-              child: Text(alert.emoji, style: const TextStyle(fontSize: 16))),
+              child: Text(emoji, style: const TextStyle(fontSize: 16))),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${alert.formattedAmount} ${alert.symbol}',
+                Text('$formattedAmount $symbol',
                   style: const TextStyle(
                     fontSize: 12, fontWeight: FontWeight.w700,
                     color: Colors.white, fontFamily: 'JetBrainsMono',
                   )),
-                Text('${alert.from} → ${alert.to}',
+                Text('$from → $to',
                   style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
               ],
             ),
@@ -102,20 +181,20 @@ class _AlertRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(timeago.format(alert.timestamp),
+              Text(timeago.format(timestamp),
                 style: const TextStyle(fontSize: 10, color: AppColors.textDisabled)),
               const SizedBox(height: 2),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                 decoration: BoxDecoration(
-                  color: (alert.toExchange ? AppColors.brandRed : AppColors.brandAmber).withAlpha(20),
+                  color: (toExchange ? AppColors.brandRed : AppColors.brandAmber).withAlpha(20),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  alert.toExchange ? 'To Exchange' : 'From Exchange',
+                  toExchange ? 'To Exchange' : 'From Exchange',
                   style: TextStyle(
                     fontSize: 8, fontWeight: FontWeight.w600,
-                    color: alert.toExchange ? AppColors.brandRed : AppColors.brandAmber,
+                    color: toExchange ? AppColors.brandRed : AppColors.brandAmber,
                   )),
               ),
             ],
@@ -123,5 +202,13 @@ class _AlertRow extends StatelessWidget {
         ],
       ),
     );
+
+    if (isLive) {
+      row = row.animate()
+          .slideX(begin: -0.1, end: 0, duration: 400.ms, curve: Curves.easeOutQuad)
+          .fadeIn(duration: 400.ms);
+    }
+
+    return row;
   }
 }

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:math' as math;
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/coin_selector.dart';
+import '../../providers/ai_analysis_provider.dart';
+import '../../providers/charts_provider.dart';
 
 class _OrderLevel {
   final double price;
@@ -37,15 +40,15 @@ List<_OrderLevel> _generateAsks() {
 final _bids = _generateBids();
 final _asks = _generateAsks();
 
-class OrderbookScreen extends StatefulWidget {
+class OrderbookScreen extends ConsumerStatefulWidget {
   const OrderbookScreen({super.key});
 
   @override
-  State<OrderbookScreen> createState() => _OrderbookScreenState();
+  ConsumerState<OrderbookScreen> createState() => _OrderbookScreenState();
 }
 
-class _OrderbookScreenState extends State<OrderbookScreen> {
-  String _selectedCoin = 'BTC';
+class _OrderbookScreenState extends ConsumerState<OrderbookScreen> {
+  String get _selectedCoin => ref.watch(aiAnalysisProvider.select((n) => n.selectedCoin));
 
   @override
   Widget build(BuildContext context) {
@@ -121,7 +124,10 @@ class _OrderbookScreenState extends State<OrderbookScreen> {
   Widget _buildCoinSelector() {
     return CoinSelector(
       selected: _selectedCoin,
-      onChanged: (c) => setState(() => _selectedCoin = c),
+      onChanged: (c) {
+        ref.read(aiAnalysisProvider).selectCoin(c);
+        ref.read(chartsProvider).setCoin(c);
+      },
     );
   }
 

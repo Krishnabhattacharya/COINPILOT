@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math' as math;
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/coin_selector.dart';
+import '../../providers/ai_analysis_provider.dart';
+import '../../providers/charts_provider.dart';
 
 List<FlSpot> _mockFlows(bool inflow) {
   final rng = math.Random(inflow ? 11 : 22);
@@ -13,15 +16,15 @@ List<FlSpot> _mockFlows(bool inflow) {
   });
 }
 
-class OnchainScreen extends StatefulWidget {
+class OnchainScreen extends ConsumerStatefulWidget {
   const OnchainScreen({super.key});
 
   @override
-  State<OnchainScreen> createState() => _OnchainScreenState();
+  ConsumerState<OnchainScreen> createState() => _OnchainScreenState();
 }
 
-class _OnchainScreenState extends State<OnchainScreen> {
-  String _selectedCoin = 'BTC';
+class _OnchainScreenState extends ConsumerState<OnchainScreen> {
+  String get _selectedCoin => ref.watch(aiAnalysisProvider.select((n) => n.selectedCoin));
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +100,10 @@ class _OnchainScreenState extends State<OnchainScreen> {
   Widget _buildCoinSelector() {
     return CoinSelector(
       selected: _selectedCoin,
-      onChanged: (c) => setState(() => _selectedCoin = c),
+      onChanged: (c) {
+        ref.read(aiAnalysisProvider).selectCoin(c);
+        ref.read(chartsProvider).setCoin(c);
+      },
     );
   }
 

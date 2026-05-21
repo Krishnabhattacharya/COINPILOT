@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 import '../theme/app_colors.dart';
+import '../../providers/dashboard_provider.dart';
+import '../remote/web_socket_baseclass.dart';
+import '../../providers/charts_provider.dart';
+import '../../providers/ai_analysis_provider.dart';
 
 class TopBar extends StatelessWidget {
   const TopBar({super.key});
@@ -43,12 +49,14 @@ class TopBar extends StatelessWidget {
   }
 }
 
-class _LiveIndicator extends StatefulWidget {
+class _LiveIndicator extends ConsumerStatefulWidget {
+  const _LiveIndicator({super.key});
+
   @override
-  State<_LiveIndicator> createState() => _LiveIndicatorState();
+  ConsumerState<_LiveIndicator> createState() => _LiveIndicatorState();
 }
 
-class _LiveIndicatorState extends State<_LiveIndicator>
+class _LiveIndicatorState extends ConsumerState<_LiveIndicator>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
@@ -69,6 +77,24 @@ class _LiveIndicatorState extends State<_LiveIndicator>
 
   @override
   Widget build(BuildContext context) {
+    final connectionAsync = ref.watch(socketConnectionProvider);
+    final isConnected = connectionAsync.value ?? false;
+    final isConnecting = connectionAsync.isLoading;
+
+    final Color indicatorColor;
+    final String statusText;
+
+    if (isConnected) {
+      indicatorColor = AppColors.brandGreen;
+      statusText = 'LIVE';
+    } else if (isConnecting) {
+      indicatorColor = AppColors.brandAmber;
+      statusText = 'CONNECTING';
+    } else {
+      indicatorColor = AppColors.textDisabled;
+      statusText = 'OFFLINE';
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -79,10 +105,10 @@ class _LiveIndicatorState extends State<_LiveIndicator>
             height: 7,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.brandGreen.withOpacity(0.4 + 0.6 * _controller.value),
+              color: indicatorColor.withOpacity(0.4 + 0.6 * _controller.value),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.brandGreen.withOpacity(0.3 * _controller.value),
+                  color: indicatorColor.withOpacity(0.3 * _controller.value),
                   blurRadius: 6,
                   spreadRadius: 2,
                 ),
@@ -91,12 +117,12 @@ class _LiveIndicatorState extends State<_LiveIndicator>
           ),
         ),
         const SizedBox(width: 6),
-        const Text(
-          'LIVE',
+        Text(
+          statusText,
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w700,
-            color: AppColors.brandGreen,
+            color: indicatorColor,
             letterSpacing: 1.2,
             fontFamily: 'JetBrainsMono',
           ),
@@ -106,53 +132,123 @@ class _LiveIndicatorState extends State<_LiveIndicator>
   }
 }
 
-class _MarketTicker extends StatelessWidget {
-  final _items = const [
-    _TickerItem('BTC', '\$97,420', true),
-    _TickerItem('ETH', '\$3,842', true),
-    _TickerItem('SOL', '\$184', false),
-    _TickerItem('BNB', '\$612', true),
-  ];
+class _MarketTicker extends ConsumerWidget {
+  const _MarketTicker();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tickersAsync = ref.watch(tickerProvider);
+    final tickers = tickersAsync.value ?? const {};
+
     return Row(
-      children: _items.map((item) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              item.symbol,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textMuted,
-                fontFamily: 'JetBrainsMono',
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              item.price,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-                fontFamily: 'JetBrainsMono',
-              ),
-            ),
-          ],
+      children: [
+        _LiveTickerItem(
+          symbol: 'BTCUSDT',
+          displayName: 'BTC',
+          ticker: tickers['BTCUSDT'],
         ),
-      )).toList(),
+        _LiveTickerItem(
+          symbol: 'ETHUSDT',
+          displayName: 'ETH',
+          ticker: tickers['ETHUSDT'],
+        ),
+        _LiveTickerItem(
+          symbol: 'SOLUSDT',
+          displayName: 'SOL',
+          ticker: tickers['SOLUSDT'],
+        ),
+        _LiveTickerItem(
+          symbol: 'BNBUSDT',
+          displayName: 'BNB',
+          ticker: tickers['BNBUSDT'],
+        ),
+      ],
     );
   }
 }
 
-class _TickerItem {
+class _LiveTickerItem extends StatefulWidget {
   final String symbol;
-  final String price;
-  final bool positive;
-  const _TickerItem(this.symbol, this.price, this.positive);
+  final String displayName;
+  final TickerUpdate? ticker;
+
+  const _LiveTickerItem({
+    super.key,
+    required this.symbol,
+    required this.displayName,
+    required this.ticker,
+  });
+
+  @override
+  State<_LiveTickerItem> createState() => _LiveTickerItemState();
+}
+
+class _LiveTickerItemState extends State<_LiveTickerItem> {
+  Color _textColor = Colors.white;
+  Timer? _timer;
+
+  @override
+  void didUpdateWidget(covariant _LiveTickerItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final currentPrice = widget.ticker?.close;
+    final oldPrice = oldWidget.ticker?.close;
+
+    if (currentPrice != null && oldPrice != null && currentPrice != oldPrice) {
+      _timer?.cancel();
+      setState(() {
+        _textColor = currentPrice > oldPrice ? AppColors.brandGreen : AppColors.brandRed;
+      });
+      _timer = Timer(const Duration(milliseconds: 600), () {
+        if (mounted) {
+          setState(() {
+            _textColor = Colors.white;
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final priceStr = widget.ticker != null
+        ? '\$${widget.ticker!.close.toStringAsFixed(widget.ticker!.close < 10 ? 3 : 2)}'
+        : '---';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            widget.displayName,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
+              fontFamily: 'JetBrainsMono',
+            ),
+          ),
+          const SizedBox(width: 4),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: _textColor,
+              fontFamily: 'JetBrainsMono',
+            ),
+            child: Text(priceStr),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SearchButton extends StatelessWidget {
@@ -184,14 +280,14 @@ class _SearchButton extends StatelessWidget {
   }
 }
 
-class _SearchDialog extends StatefulWidget {
-  const _SearchDialog();
+class _SearchDialog extends ConsumerStatefulWidget {
+  const _SearchDialog({super.key});
 
   @override
-  State<_SearchDialog> createState() => _SearchDialogState();
+  ConsumerState<_SearchDialog> createState() => _SearchDialogState();
 }
 
-class _SearchDialogState extends State<_SearchDialog> {
+class _SearchDialogState extends ConsumerState<_SearchDialog> {
   final _controller = TextEditingController();
   String _query = '';
 
@@ -323,7 +419,25 @@ class _SearchDialogState extends State<_SearchDialog> {
                             item: item,
                             onTap: () {
                               Navigator.of(context).pop();
-                              context.go(item.route);
+                              final isCoin = item.route == '/analysis';
+                              if (isCoin) {
+                                final coinSymbol = item.title;
+                                ref.read(aiAnalysisProvider).selectCoin(coinSymbol);
+                                ref.read(chartsProvider).setCoin(coinSymbol);
+
+                                final currentRoute = GoRouterState.of(context).uri.path;
+                                if (currentRoute == '/charts' ||
+                                    currentRoute == '/analysis' ||
+                                    currentRoute == '/trade-now' ||
+                                    currentRoute == '/orderbook' ||
+                                    currentRoute == '/onchain') {
+                                  // Stay on current screen, coin selection has already updated!
+                                } else {
+                                  context.go(item.route);
+                                }
+                              } else {
+                                context.go(item.route);
+                              }
                             },
                           ),
                         ],
@@ -400,15 +514,94 @@ class _SearchResultRow extends StatelessWidget {
                   Text(item.title, style: const TextStyle(
                     fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white,
                   )),
-                  Text(item.subtitle, style: const TextStyle(
-                    fontSize: 11, color: AppColors.textMuted,
-                  )),
+                  _SearchResultSubtitle(item: item),
                 ],
               ),
             ),
             const Icon(Icons.arrow_forward_rounded, size: 14, color: AppColors.textDisabled),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SearchResultSubtitle extends ConsumerStatefulWidget {
+  final _SearchItem item;
+  const _SearchResultSubtitle({super.key, required this.item});
+
+  @override
+  ConsumerState<_SearchResultSubtitle> createState() => _SearchResultSubtitleState();
+}
+
+class _SearchResultSubtitleState extends ConsumerState<_SearchResultSubtitle> {
+  Color _textColor = AppColors.textMuted;
+  Timer? _timer;
+  double? _prevPrice;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isCoin = widget.item.route == '/analysis';
+    if (!isCoin) {
+      return Text(
+        widget.item.subtitle,
+        style: const TextStyle(
+          fontSize: 11,
+          color: AppColors.textMuted,
+        ),
+      );
+    }
+
+    final symbol = '${widget.item.title}USDT';
+    final tickersAsync = ref.watch(tickerProvider);
+    final tickers = tickersAsync.value ?? const {};
+    final ticker = tickers[symbol];
+
+    if (ticker != null) {
+      final currentPrice = ticker.close;
+      if (_prevPrice != null && _prevPrice != currentPrice) {
+        _timer?.cancel();
+        setState(() {
+          _textColor = currentPrice > _prevPrice! ? AppColors.brandGreen : AppColors.brandRed;
+        });
+        _timer = Timer(const Duration(milliseconds: 600), () {
+          if (mounted) {
+            setState(() {
+              _textColor = AppColors.textMuted;
+            });
+          }
+        });
+      }
+      _prevPrice = currentPrice;
+
+      // Extract original coin name from subtitle before the middle dot
+      final parts = widget.item.subtitle.split(' · ');
+      final name = parts.isNotEmpty ? parts.first : widget.item.title;
+      final priceStr = '\$${currentPrice.toStringAsFixed(currentPrice < 10 ? 3 : 2)}';
+
+      return AnimatedDefaultTextStyle(
+        duration: const Duration(milliseconds: 200),
+        style: TextStyle(
+          fontSize: 11,
+          color: _textColor,
+          fontFamily: _textColor != AppColors.textMuted ? 'JetBrainsMono' : null,
+          fontWeight: _textColor != AppColors.textMuted ? FontWeight.w700 : null,
+        ),
+        child: Text('$name · $priceStr'),
+      );
+    }
+
+    return Text(
+      widget.item.subtitle,
+      style: const TextStyle(
+        fontSize: 11,
+        color: AppColors.textMuted,
       ),
     );
   }

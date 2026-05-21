@@ -1,14 +1,16 @@
 import 'package:ai_trading_copilot/core/remote/data/analysis/analysis_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/widgets/coin_selector.dart';
 import '../../providers/ai_analysis_provider.dart';
 import '../../providers/analysis_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/charts_provider.dart';
 
-const _coins = ['BTC', 'ETH', 'SOL', 'BNB'];
+const _coins = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE'];
 
 String _coinIdFromSymbol(String s) {
   const map = {
@@ -64,8 +66,10 @@ class _AiAnalysisScreenState extends ConsumerState<AiAnalysisScreen> {
                       return _Header(
                         selectedCoin: coin,
                         coins: _coins,
-                        onCoinChanged: (c) =>
-                            ref.read(aiAnalysisProvider).selectCoin(c),
+                        onCoinChanged: (c) {
+                          ref.read(aiAnalysisProvider).selectCoin(c);
+                          ref.read(chartsProvider).setCoin(c);
+                        },
                       );
                     },
                   ),
@@ -389,19 +393,7 @@ class _SupportResistanceCard extends StatelessWidget {
                       letterSpacing: 0.5,
                     )),
                 const Spacer(),
-                Text(
-                  currentPrice != null
-                      ? currentPrice! >= 1000
-                          ? '\$${currentPrice!.toStringAsFixed(0)}'
-                          : '\$${currentPrice!.toStringAsFixed(2)}'
-                      : '--',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    fontFamily: 'JetBrainsMono',
-                  ),
-                ),
+                _SupportPriceText(currentPrice: currentPrice),
               ],
             ),
           ),
@@ -416,6 +408,67 @@ class _SupportResistanceCard extends StatelessWidget {
             _Level('S3', '\$89,400', AppColors.brandGreen, 0.2),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _SupportPriceText extends StatefulWidget {
+  final double? currentPrice;
+  const _SupportPriceText({super.key, required this.currentPrice});
+
+  @override
+  State<_SupportPriceText> createState() => _SupportPriceTextState();
+}
+
+class _SupportPriceTextState extends State<_SupportPriceText> {
+  Color _textColor = Colors.white;
+  Timer? _timer;
+
+  @override
+  void didUpdateWidget(covariant _SupportPriceText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final cur = widget.currentPrice;
+    final prev = oldWidget.currentPrice;
+
+    if (cur != null && prev != null && cur != prev) {
+      _timer?.cancel();
+      setState(() {
+        _textColor = cur > prev ? AppColors.brandGreen : AppColors.brandRed;
+      });
+      _timer = Timer(const Duration(milliseconds: 600), () {
+        if (mounted) {
+          setState(() {
+            _textColor = Colors.white;
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cur = widget.currentPrice;
+    return AnimatedDefaultTextStyle(
+      duration: const Duration(milliseconds: 200),
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+        color: _textColor,
+        fontFamily: 'JetBrainsMono',
+      ),
+      child: Text(
+        cur != null
+            ? cur >= 1000
+                ? '\$${cur.toStringAsFixed(0)}'
+                : '\$${cur.toStringAsFixed(2)}'
+            : '--',
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -200,50 +201,84 @@ class _MarketOverviewCardsState extends ConsumerState<MarketOverviewCards> {
   }
 }
 
-class _CoinCard extends StatelessWidget {
+class _CoinCard extends StatefulWidget {
   final MarketCoin coin;
   final TickerUpdate? liveTicker;
   final bool compact;
   final VoidCallback onTap;
 
   const _CoinCard({
+    super.key,
     required this.coin,
     this.liveTicker,
     this.compact = false,
     required this.onTap,
   });
 
+  @override
+  State<_CoinCard> createState() => _CoinCardState();
+}
+
+class _CoinCardState extends State<_CoinCard> {
+  Color _priceColor = Colors.white;
+  Timer? _timer;
+
+  @override
+  void didUpdateWidget(covariant _CoinCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final currentPrice = widget.liveTicker?.close ?? widget.coin.currentPrice;
+    final oldPrice = oldWidget.liveTicker?.close ?? oldWidget.coin.currentPrice;
+
+    if (currentPrice != oldPrice) {
+      _timer?.cancel();
+      setState(() {
+        _priceColor = currentPrice > oldPrice ? AppColors.brandGreen : AppColors.brandRed;
+      });
+      _timer = Timer(const Duration(milliseconds: 600), () {
+        if (mounted) {
+          setState(() {
+            _priceColor = Colors.white;
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
   String get _priceText {
-    final p = liveTicker?.close ?? coin.currentPrice;
+    final p = widget.liveTicker?.close ?? widget.coin.currentPrice;
     if (p >= 1000) return '\$${p.toStringAsFixed(2)}';
     if (p >= 1) return '\$${p.toStringAsFixed(2)}';
     return '\$${p.toStringAsFixed(4)}';
   }
 
   String get _changeText {
-    final c = liveTicker?.priceChangePercent ?? coin.priceChange24h;
+    final c = widget.liveTicker?.priceChangePercent ?? widget.coin.priceChange24h;
     return '${c >= 0 ? '+' : ''}${c.toStringAsFixed(2)}%';
   }
 
   bool get _isPositive =>
-      (liveTicker?.priceChangePercent ?? coin.priceChange24h) >= 0;
+      (widget.liveTicker?.priceChangePercent ?? widget.coin.priceChange24h) >= 0;
 
   @override
   Widget build(BuildContext context) =>
-      compact ? _buildCompact() : _buildWide();
+      widget.compact ? _buildCompact() : _buildWide();
 
   // ── Mobile: vertical card ────────────────────────────────────
   Widget _buildCompact() {
-    final color = _coinColor(coin.symbol);
+    final color = _coinColor(widget.coin.symbol);
     final changeColor = _isPositive ? AppColors.brandGreen : AppColors.brandRed;
 
     return GlassCard(
-      onTap: onTap,
+      onTap: widget.onTap,
       padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        // KEY FIX: use 'start' not 'spaceBetween' so children
-        // are laid out top-to-bottom and nothing gets squished.
         mainAxisAlignment: MainAxisAlignment.start,
         mainAxisSize: MainAxisSize.max,
         children: [
@@ -258,7 +293,7 @@ class _CoinCard extends StatelessWidget {
                     color: color.withAlpha(25), shape: BoxShape.circle),
                 child: Center(
                   child: Text(
-                    coin.symbol[0],
+                    widget.coin.symbol[0],
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -291,25 +326,26 @@ class _CoinCard extends StatelessWidget {
 
           // ── Symbol + price ──
           Text(
-            coin.symbol,
+            widget.coin.symbol,
             style: const TextStyle(
                 fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white),
           ),
           const SizedBox(height: 2),
-          Text(
-            _priceText,
-            style: const TextStyle(
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: _priceColor,
               fontFamily: 'JetBrainsMono',
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            child: Text(_priceText),
           ),
 
           // ── Sparkline: Expanded fills remaining card height ──
-          if (coin.sparkline.isNotEmpty) ...[
+          if (widget.coin.sparkline.isNotEmpty) ...[
             const SizedBox(height: 6),
             Expanded(
               child: LineChart(
@@ -320,7 +356,7 @@ class _CoinCard extends StatelessWidget {
                   lineTouchData: const LineTouchData(enabled: false),
                   lineBarsData: [
                     LineChartBarData(
-                      spots: coin.sparkline
+                      spots: widget.coin.sparkline
                           .asMap()
                           .entries
                           .map((e) => FlSpot(e.key.toDouble(), e.value))
@@ -347,11 +383,11 @@ class _CoinCard extends StatelessWidget {
 
   // ── Tablet / Desktop: horizontal card ───────────────────────
   Widget _buildWide() {
-    final color = _coinColor(coin.symbol);
+    final color = _coinColor(widget.coin.symbol);
     final changeColor = _isPositive ? AppColors.brandGreen : AppColors.brandRed;
 
     return GlassCard(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Row(
         children: [
           Container(
@@ -361,7 +397,7 @@ class _CoinCard extends StatelessWidget {
                 color: color.withAlpha(25), shape: BoxShape.circle),
             child: Center(
               child: Text(
-                coin.symbol[0],
+                widget.coin.symbol[0],
                 style: TextStyle(
                     fontSize: 16, fontWeight: FontWeight.w800, color: color),
               ),
@@ -374,14 +410,14 @@ class _CoinCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  coin.symbol,
+                  widget.coin.symbol,
                   style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: Colors.white),
                 ),
                 Text(
-                  coin.name,
+                  widget.coin.name,
                   style:
                       const TextStyle(fontSize: 10, color: AppColors.textMuted),
                 ),
@@ -392,13 +428,14 @@ class _CoinCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                _priceText,
-                style: const TextStyle(
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: _priceColor,
                     fontFamily: 'JetBrainsMono'),
+                child: Text(_priceText),
               ),
               const SizedBox(height: 2),
               Container(
@@ -420,7 +457,7 @@ class _CoinCard extends StatelessWidget {
             ],
           ),
           const SizedBox(width: 12),
-          if (coin.sparkline.isNotEmpty)
+          if (widget.coin.sparkline.isNotEmpty)
             SizedBox(
               width: 60,
               height: 30,
@@ -432,7 +469,7 @@ class _CoinCard extends StatelessWidget {
                   lineTouchData: const LineTouchData(enabled: false),
                   lineBarsData: [
                     LineChartBarData(
-                      spots: coin.sparkline
+                      spots: widget.coin.sparkline
                           .asMap()
                           .entries
                           .map((e) => FlSpot(e.key.toDouble(), e.value))

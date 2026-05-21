@@ -66,3 +66,23 @@ final tickerProvider = StreamProvider<Map<String, TickerUpdate>>((ref) {
     return {for (final t in list) t.symbol: t};
   });
 });
+
+final socketConnectionProvider = StreamProvider<bool>((ref) {
+  final socket = DashboardSocket.instance;
+  socket.connect();
+  return socket.connectionStream;
+});
+
+final liveWhaleProvider = StreamProvider<List<LiveWhaleAlert>>((ref) {
+  final socket = DashboardSocket.instance;
+  socket.connect();
+  ref.onDispose(socket.disconnect);
+  return socket.whaleStream;
+});
+
+final liveFundingProvider = StreamProvider<List<LiveFundingRate>>((ref) {
+  final socket = DashboardSocket.instance;
+  socket.connect();
+  ref.onDispose(socket.disconnect);
+  return socket.fundingStream;
+});
