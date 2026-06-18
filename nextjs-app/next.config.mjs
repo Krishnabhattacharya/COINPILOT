@@ -11,39 +11,20 @@ const nextConfig = {
       { protocol: "https", hostname: "cryptologos.cc" },
       { protocol: "https", hostname: "coin-images.coingecko.com" },
     ],
+    formats: ["image/avif", "image/webp"],
   },
 
   async rewrites() {
-    // In dev: proxy /app/* to local Flutter dev server
     if (process.env.NODE_ENV !== "production") {
       return [
-        {
-          source: "/app/:path*",
-          destination: "http://localhost:5001/app/:path*",
-        },
-        {
-          source: "/dashboard/:path*",
-          destination: "http://localhost:5001/dashboard/:path*",
-        },
-        {
-          source: "/analysis/:path*",
-          destination: "http://localhost:5001/analysis/:path*",
-        },
-        {
-          source: "/charts/:path*",
-          destination: "http://localhost:5001/charts/:path*",
-        },
-        {
-          source: "/chat/:path*",
-          destination: "http://localhost:5001/chat/:path*",
-        },
+        { source: "/app/:path*", destination: "http://localhost:5001/app/:path*" },
+        { source: "/dashboard/:path*", destination: "http://localhost:5001/dashboard/:path*" },
+        { source: "/analysis/:path*", destination: "http://localhost:5001/analysis/:path*" },
+        { source: "/charts/:path*", destination: "http://localhost:5001/charts/:path*" },
+        { source: "/chat/:path*", destination: "http://localhost:5001/chat/:path*" },
       ];
     }
 
-    // In production: Flutter is embedded in public/app/ as static files.
-    // Only rewrite /app and /app/ to serve Flutter's index.html.
-    // All other /app/* requests (JS, WASM, assets) are served directly
-    // from public/app/ by Next.js static file serving.
     return [
       { source: "/app", destination: "/app/index.html" },
       { source: "/app/", destination: "/app/index.html" },
@@ -58,10 +39,38 @@ const nextConfig = {
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-DNS-Prefetch-Control", value: "on" },
           {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
           },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=()",
+          },
+        ],
+      },
+      // Prevent indexing of auth and API routes
+      {
+        source: "/auth/(.*)",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        source: "/api/(.*)",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      // Long-lived cache for static Flutter assets
+      {
+        source: "/app/canvaskit/(.*)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        source: "/app/assets/(.*)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
     ];

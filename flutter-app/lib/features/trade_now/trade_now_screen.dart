@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
@@ -27,10 +28,14 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
 
   Color _verdictColor(VerdictType t) {
     switch (t) {
-      case VerdictType.bullish: return AppColors.brandGreen;
-      case VerdictType.bearish: return AppColors.brandRed;
-      case VerdictType.caution: return AppColors.brandAmber;
-      case VerdictType.neutral: return AppColors.textMuted;
+      case VerdictType.bullish:
+        return AppColors.brandGreen;
+      case VerdictType.bearish:
+        return AppColors.brandRed;
+      case VerdictType.caution:
+        return AppColors.brandAmber;
+      case VerdictType.neutral:
+        return AppColors.textMuted;
     }
   }
 
@@ -129,17 +134,22 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Column(
           children: [
-            const Icon(Icons.search_off_rounded, color: AppColors.brandAmber, size: 36),
+            const Icon(Icons.search_off_rounded,
+                color: AppColors.brandAmber, size: 36),
             const SizedBox(height: 12),
             Text(
               '$_selectedCoin is not a recognized trading pair',
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
             const Text(
               'Try BTC, ETH, SOL, BNB, XRP, DOGE, or any Binance-listed coin.',
-              style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.5),
+              style: TextStyle(
+                  fontSize: 12, color: AppColors.textMuted, height: 1.5),
               textAlign: TextAlign.center,
             ),
           ],
@@ -158,12 +168,14 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
       ),
       child: const Row(
         children: [
-          Icon(Icons.info_outline_rounded, size: 14, color: AppColors.brandBlue),
+          Icon(Icons.info_outline_rounded,
+              size: 14, color: AppColors.brandBlue),
           SizedBox(width: 10),
           Expanded(
             child: Text(
               'Spot-only coin — futures metrics (OI, funding rate, L/S ratio) are not available. Trade levels use S/R + Fibonacci.',
-              style: TextStyle(fontSize: 11, color: AppColors.brandBlue, height: 1.5),
+              style: TextStyle(
+                  fontSize: 11, color: AppColors.brandBlue, height: 1.5),
             ),
           ),
         ],
@@ -175,7 +187,8 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
     return Row(
       children: [
         Container(
-          width: 40, height: 40,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             gradient: AppColors.gradientGreen,
             borderRadius: BorderRadius.circular(12),
@@ -187,16 +200,21 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Trade Now?', style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white,
-                letterSpacing: -0.5,
-              )),
-              Text('AI signal aggregator · Funding · OI · L/S Ratio · Sentiment',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              Text('Trade Now?',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  )),
+              Text(
+                  'AI signal aggregator · Funding · OI · L/S Ratio · Sentiment',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
             ],
           ),
         ),
-        const NeonBadge(label: 'LIVE', color: AppColors.brandGreen, icon: Icons.circle),
+        const NeonBadge(
+            label: 'LIVE', color: AppColors.brandGreen, icon: Icons.circle),
       ],
     );
   }
@@ -226,13 +244,17 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
                     Text(s.verdictIcon, style: const TextStyle(fontSize: 20)),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(s.verdictLabel, style: TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w800, color: color,
-                      )),
+                      child: Text(s.verdictLabel,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                          )),
                     ),
                     if (livePrice != null)
                       Container(
-                        width: 6, height: 6,
+                        width: 6,
+                        height: 6,
                         decoration: const BoxDecoration(
                           color: AppColors.brandGreen,
                           shape: BoxShape.circle,
@@ -243,14 +265,20 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Text('$_selectedCoin/USDT ', style: const TextStyle(
-                      fontSize: 13, color: AppColors.textMuted,
-                    )),
-                    Text(displayPrice, style: TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w700,
-                      color: livePrice != null ? AppColors.brandGreen : Colors.white,
-                      fontFamily: 'JetBrainsMono',
-                    )),
+                    Text('$_selectedCoin/USDT ',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                        )),
+                    Text(displayPrice,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: livePrice != null
+                              ? AppColors.brandGreen
+                              : Colors.white,
+                          fontFamily: 'JetBrainsMono',
+                        )),
                   ],
                 ),
               ],
@@ -264,11 +292,12 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
   }
 
   Widget _buildMetricsGrid(TradeNowData d) {
-    final fundingBadgeColor = d.funding.level == 'High' || d.funding.level == 'Very High'
-        ? AppColors.brandRed
-        : d.funding.level == 'Elevated'
-            ? AppColors.brandAmber
-            : AppColors.brandGreen;
+    final fundingBadgeColor =
+        d.funding.level == 'High' || d.funding.level == 'Very High'
+            ? AppColors.brandRed
+            : d.funding.level == 'Elevated'
+                ? AppColors.brandAmber
+                : AppColors.brandGreen;
 
     final oiBadgeColor = d.openInterest.changeLabel == 'Surging' ||
             d.openInterest.changeLabel == 'Rising'
@@ -281,15 +310,18 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
             ? AppColors.brandGreen
             : AppColors.textMuted;
 
-    final liqColor = d.liquidations.capitalizedSide == 'Below'
-        ? AppColors.brandAmber
-        : AppColors.brandGreen;
+    final liqColor = d.liquidations.unavailable
+        ? AppColors.textMuted
+        : d.liquidations.capitalizedSide == 'Below'
+            ? AppColors.brandAmber
+            : AppColors.brandGreen;
 
     return Column(
       children: [
         Row(
           children: [
-            Expanded(child: _MetricTile(
+            Expanded(
+                child: _MetricTile(
               label: 'Funding Rate',
               value: d.funding.formatted,
               badge: d.funding.level,
@@ -297,7 +329,8 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
               icon: Icons.swap_horiz_rounded,
             )),
             const SizedBox(width: 12),
-            Expanded(child: _MetricTile(
+            Expanded(
+                child: _MetricTile(
               label: 'OI Change',
               value: d.openInterest.formattedChange,
               badge: d.openInterest.changeLabel,
@@ -309,7 +342,8 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
         const SizedBox(height: 12),
         Row(
           children: [
-            Expanded(child: _MetricTile(
+            Expanded(
+                child: _MetricTile(
               label: 'Long/Short Ratio',
               value: d.longShort.formattedRatio,
               badge: d.longShort.label,
@@ -317,10 +351,15 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
               icon: Icons.people_rounded,
             )),
             const SizedBox(width: 12),
-            Expanded(child: _MetricTile(
-              label: 'Liq Wall ${d.liquidations.capitalizedSide}',
-              value: d.liquidations.formattedWall,
-              badge: d.liquidations.capitalizedSide,
+            Expanded(
+                child: _MetricTile(
+              label: 'Liq Wall',
+              value: d.liquidations.unavailable
+                  ? 'Unavailable'
+                  : d.liquidations.formattedWall,
+              badge: d.liquidations.unavailable
+                  ? 'No Data'
+                  : d.liquidations.capitalizedSide,
               badgeColor: liqColor,
               icon: Icons.local_fire_department_rounded,
             )),
@@ -333,16 +372,18 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
   }
 
   Widget _buildLevelsCard(SignalData s) {
-    final showNoLevelsNotice = s.entry == '—' ||
-        s.entry == '\$0–\$0' ||
-        s.entry == '\$0.00–\$0.00';
+    final showNoLevelsNotice =
+        s.entry == '—' || s.entry == '\$0–\$0' || s.entry == '\$0.00–\$0.00';
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Trade Levels', style: TextStyle(
-            fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
-          )),
+          const Text('Trade Levels',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              )),
           const SizedBox(height: 16),
           if (showNoLevelsNotice)
             Container(
@@ -355,12 +396,16 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, size: 12, color: AppColors.brandAmber),
+                  Icon(Icons.info_outline_rounded,
+                      size: 12, color: AppColors.brandAmber),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Trade levels not available for this coin. Try BTC, ETH, SOL, BNB, or XRP.',
-                      style: TextStyle(fontSize: 11, color: AppColors.brandAmber, height: 1.4),
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.brandAmber,
+                          height: 1.4),
                     ),
                   ),
                 ],
@@ -378,11 +423,15 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
           const SizedBox(height: 12),
           const Row(
             children: [
-              Icon(Icons.info_outline_rounded, size: 12, color: AppColors.textDisabled),
+              Icon(Icons.info_outline_rounded,
+                  size: 12, color: AppColors.textDisabled),
               SizedBox(width: 6),
               Expanded(
                 child: Text('Levels are AI-generated. Not financial advice.',
-                  style: TextStyle(fontSize: 10, color: AppColors.textDisabled, height: 1.4)),
+                    style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textDisabled,
+                        height: 1.4)),
               ),
             ],
           ),
@@ -397,26 +446,36 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             decoration: BoxDecoration(
               gradient: AppColors.gradientGreen,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.psychology_rounded, color: Colors.black, size: 16),
+            child: const Icon(Icons.psychology_rounded,
+                color: Colors.black, size: 16),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('AI Reasoning', style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.brandGreen,
-                )),
+                const Text('AI Reasoning',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.brandGreen,
+                    )),
                 const SizedBox(height: 6),
-                Text(s.reasoning.isEmpty ? 'No reasoning available.' : s.reasoning,
-                  style: const TextStyle(
-                    fontSize: 12, color: AppColors.textMuted, height: 1.6,
-                  )),
+                Text(
+                    s.reasoning.isEmpty
+                        ? 'No reasoning available.'
+                        : s.reasoning,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                      height: 1.6,
+                    )),
               ],
             ),
           ),
@@ -429,47 +488,63 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Historical Setups Like This', style: TextStyle(
-          fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white,
-        )),
+        const Text('Historical Setups Like This',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            )),
         const SizedBox(height: 10),
         ...setups.map((s) => Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: GlassCard(
-            child: Row(
-              children: [
-                Container(
-                  width: 4, height: 40,
-                  decoration: BoxDecoration(
-                    color: s.positive ? AppColors.brandGreen : AppColors.brandRed,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: GlassCard(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: s.positive
+                            ? AppColors.brandGreen
+                            : AppColors.brandRed,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(s.title,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              )),
+                          const SizedBox(height: 3),
+                          Text(s.description,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textMuted,
+                                height: 1.4,
+                              )),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(s.outcome,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: s.positive
+                              ? AppColors.brandGreen
+                              : AppColors.brandRed,
+                          fontFamily: 'JetBrainsMono',
+                        )),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(s.title, style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white,
-                      )),
-                      const SizedBox(height: 3),
-                      Text(s.description, style: const TextStyle(
-                        fontSize: 11, color: AppColors.textMuted, height: 1.4,
-                      )),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(s.outcome, style: TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w800,
-                  color: s.positive ? AppColors.brandGreen : AppColors.brandRed,
-                  fontFamily: 'JetBrainsMono',
-                )),
-              ],
-            ),
-          ),
-        )),
+              ),
+            )),
       ],
     );
   }
@@ -483,38 +558,46 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
           child: Container(
             height: 90,
             decoration: BoxDecoration(
-              color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                color: Colors.white, borderRadius: BorderRadius.circular(16)),
           ),
         ),
         const SizedBox(height: 16),
         Row(
-          children: List.generate(2, (_) => Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Shimmer.fromColors(
-                baseColor: AppColors.bgCard,
-                highlightColor: AppColors.bgTertiary,
-                child: Container(height: 90,
-                  decoration: BoxDecoration(
-                    color: Colors.white, borderRadius: BorderRadius.circular(12))),
-              ),
-            ),
-          )),
+          children: List.generate(
+              2,
+              (_) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Shimmer.fromColors(
+                        baseColor: AppColors.bgCard,
+                        highlightColor: AppColors.bgTertiary,
+                        child: Container(
+                            height: 90,
+                            decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12))),
+                      ),
+                    ),
+                  )),
         ),
         const SizedBox(height: 12),
         Row(
-          children: List.generate(2, (_) => Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Shimmer.fromColors(
-                baseColor: AppColors.bgCard,
-                highlightColor: AppColors.bgTertiary,
-                child: Container(height: 90,
-                  decoration: BoxDecoration(
-                    color: Colors.white, borderRadius: BorderRadius.circular(12))),
-              ),
-            ),
-          )),
+          children: List.generate(
+              2,
+              (_) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Shimmer.fromColors(
+                        baseColor: AppColors.bgCard,
+                        highlightColor: AppColors.bgTertiary,
+                        child: Container(
+                            height: 90,
+                            decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12))),
+                      ),
+                    ),
+                  )),
         ),
       ],
     );
@@ -524,17 +607,21 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
     return GlassCard(
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppColors.brandRed, size: 20),
+          const Icon(Icons.error_outline_rounded,
+              color: AppColors.brandRed, size: 20),
           const SizedBox(width: 12),
           const Expanded(
             child: Text('Could not load signal data',
-              style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
           ),
           GestureDetector(
             onTap: () => ref.invalidate(tradeNowProvider(_selectedCoin)),
-            child: const Text('Retry', style: TextStyle(
-              fontSize: 12, color: AppColors.brandGreen, fontWeight: FontWeight.w600,
-            )),
+            child: const Text('Retry',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.brandGreen,
+                  fontWeight: FontWeight.w600,
+                )),
           ),
         ],
       ),
@@ -552,33 +639,91 @@ class _ConfidenceRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 72, height: 72,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircularProgressIndicator(
-            value: confidence / 100,
-            strokeWidth: 6,
-            backgroundColor: AppColors.borderSubtle,
-            valueColor: AlwaysStoppedAnimation(color),
-            strokeCap: StrokeCap.round,
-          ),
-          Column(
+      width: 80,
+      height: 80,
+      child: CustomPaint(
+        painter: _RingPainter(
+          progress: (confidence / 100).clamp(0.0, 1.0),
+          color: color,
+          trackColor: AppColors.borderSubtle,
+          strokeWidth: 5,
+        ),
+        child: Center(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('$confidence%', style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w900,
-                color: color, fontFamily: 'JetBrainsMono',
-              )),
-              const Text('AI conf.', style: TextStyle(
-                fontSize: 8, color: AppColors.textMuted,
-              )),
+              Text(
+                '$confidence%',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                  fontFamily: 'JetBrainsMono',
+                  height: 1.1,
+                ),
+              ),
+              const Text(
+                'conf.',
+                style: TextStyle(
+                  fontSize: 8,
+                  color: AppColors.textMuted,
+                  height: 1.2,
+                ),
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
+}
+
+class _RingPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final Color trackColor;
+  final double strokeWidth;
+
+  const _RingPainter({
+    required this.progress,
+    required this.color,
+    required this.trackColor,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    final arcPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, trackPaint);
+
+    if (progress > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        2 * math.pi * progress,
+        false,
+        arcPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.progress != progress || old.color != color;
 }
 
 class _MetricTile extends StatelessWidget {
@@ -586,8 +731,11 @@ class _MetricTile extends StatelessWidget {
   final Color badgeColor;
   final IconData icon;
   const _MetricTile({
-    required this.label, required this.value,
-    required this.badge, required this.badgeColor, required this.icon,
+    required this.label,
+    required this.value,
+    required this.badge,
+    required this.badgeColor,
+    required this.icon,
   });
 
   @override
@@ -600,14 +748,19 @@ class _MetricTile extends StatelessWidget {
             children: [
               Icon(icon, size: 13, color: AppColors.textMuted),
               const SizedBox(width: 6),
-              Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 10, color: AppColors.textMuted)),
             ],
           ),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(
-            fontSize: 18, fontWeight: FontWeight.w800,
-            color: Colors.white, fontFamily: 'JetBrainsMono',
-          )),
+          Text(value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                fontFamily: 'JetBrainsMono',
+              )),
           const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -615,10 +768,13 @@ class _MetricTile extends StatelessWidget {
               color: badgeColor.withAlpha(15),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Text(badge, style: TextStyle(
-              fontSize: 9, fontWeight: FontWeight.w700,
-              color: badgeColor, letterSpacing: 0.3,
-            )),
+            child: Text(badge,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: badgeColor,
+                  letterSpacing: 0.3,
+                )),
           ),
         ],
       ),
@@ -633,9 +789,11 @@ class _SentimentBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = value > 65 ? AppColors.brandGreen
-        : value > 45 ? AppColors.brandAmber
-        : AppColors.brandRed;
+    final color = value > 65
+        ? AppColors.brandGreen
+        : value > 45
+            ? AppColors.brandAmber
+            : AppColors.brandRed;
 
     return GlassCard(
       child: Column(
@@ -643,16 +801,22 @@ class _SentimentBar extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.mood_rounded, size: 13, color: AppColors.textMuted),
+              const Icon(Icons.mood_rounded,
+                  size: 13, color: AppColors.textMuted),
               const SizedBox(width: 6),
-              const Text('News & Social Sentiment', style: TextStyle(
-                fontSize: 10, color: AppColors.textMuted,
-              )),
+              const Text('News & Social Sentiment',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  )),
               const Spacer(),
-              Text('$value / 100', style: TextStyle(
-                fontSize: 12, fontWeight: FontWeight.w700,
-                color: color, fontFamily: 'JetBrainsMono',
-              )),
+              Text('$value / 100',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                    fontFamily: 'JetBrainsMono',
+                  )),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -660,9 +824,12 @@ class _SentimentBar extends StatelessWidget {
                   color: color.withAlpha(15),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(label, style: TextStyle(
-                  fontSize: 9, fontWeight: FontWeight.w700, color: color,
-                )),
+                child: Text(label,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    )),
               ),
             ],
           ),
@@ -692,20 +859,28 @@ class _LevelRow extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 3, height: 18,
+          width: 3,
+          height: 18,
           decoration: BoxDecoration(
-            color: color, borderRadius: BorderRadius.circular(2),          ),
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(label, style: const TextStyle(
-            fontSize: 11, color: AppColors.textMuted,
-          )),
+          child: Text(label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textMuted,
+              )),
         ),
-        Text(value, style: TextStyle(
-          fontSize: 13, fontWeight: FontWeight.w700,
-          color: color, fontFamily: 'JetBrainsMono',
-        )),
+        Text(value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: color,
+              fontFamily: 'JetBrainsMono',
+            )),
       ],
     );
   }

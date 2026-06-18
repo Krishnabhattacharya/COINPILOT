@@ -204,8 +204,13 @@ class LongShortData {
 class LiquidationData {
   final double wallPrice;
   final String side;
+  final bool unavailable;
 
-  const LiquidationData({required this.wallPrice, required this.side});
+  const LiquidationData({
+    required this.wallPrice,
+    required this.side,
+    this.unavailable = false,
+  });
 
   String get formattedWall {
     if (wallPrice >= 1000) {
@@ -221,6 +226,9 @@ class LiquidationData {
       side.isEmpty ? 'Below' : '${side[0].toUpperCase()}${side.substring(1).toLowerCase()}';
 
   factory LiquidationData.fromJson(Map<String, dynamic> json) {
+    if (json['unavailable'] == true) {
+      return const LiquidationData(wallPrice: 0, side: 'Below', unavailable: true);
+    }
     // API returns liquidationWallBelow / liquidationWallAbove as nested objects
     final below = json['liquidationWallBelow'] as Map<String, dynamic>?;
     final above = json['liquidationWallAbove'] as Map<String, dynamic>?;

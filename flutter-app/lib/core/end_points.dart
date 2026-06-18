@@ -9,7 +9,7 @@ class EndPoints {
       String.fromEnvironment('ENV', defaultValue: 'prod');
 
   static const String baseUrl = _env == 'dev'
-      ? 'http://localhost:8080'
+      ? 'http://10.255.251.45:5000'
       : 'https://crypto-backend-4557.onrender.com';
 
   static const String apiBaseUrl = '$baseUrl/api/v1';
@@ -309,11 +309,14 @@ class EndPoints {
   // Token Unlocks
   // ─────────────────────────────────────────────────────────────
   static const String tokenUnlocks = '$apiBaseUrl/token-unlocks';
-  static const String tokenUnlocksUpcoming = '$apiBaseUrl/token-unlocks/upcoming';
+  static const String tokenUnlocksUpcoming =
+      '$apiBaseUrl/token-unlocks/upcoming';
   static String tokenUnlocksWithParams({int page = 1, int limit = 20}) =>
-      Uri.parse(tokenUnlocks).replace(queryParameters: {'page': '$page', 'limit': '$limit'}).toString();
+      Uri.parse(tokenUnlocks).replace(
+          queryParameters: {'page': '$page', 'limit': '$limit'}).toString();
   static String tokenUnlocksUpcomingWithParams({int days = 30}) =>
-      Uri.parse(tokenUnlocksUpcoming).replace(queryParameters: {'days': '$days'}).toString();
+      Uri.parse(tokenUnlocksUpcoming)
+          .replace(queryParameters: {'days': '$days'}).toString();
 
   // ─────────────────────────────────────────────────────────────
   // Market Memory
@@ -322,12 +325,19 @@ class EndPoints {
   static const String memorySimilarEvents = '$apiBaseUrl/memory/similar-events';
   static const String memoryMarketCycles = '$apiBaseUrl/memory/market-cycles';
   static const String memoryMacroContext = '$apiBaseUrl/memory/macro-context';
-  static String memoryPatternsWithParams({String symbol = 'BTC', int lookback = 365}) =>
-      Uri.parse(memoryPatterns).replace(queryParameters: {'symbol': symbol, 'lookback': '$lookback'}).toString();
-  static String memorySimilarEventsWithParams({String symbol = 'BTC', int limit = 5}) =>
-      Uri.parse(memorySimilarEvents).replace(queryParameters: {'symbol': symbol, 'limit': '$limit'}).toString();
+  static String memoryPatternsWithParams(
+          {String symbol = 'BTC', int lookback = 365}) =>
+      Uri.parse(memoryPatterns).replace(queryParameters: {
+        'symbol': symbol,
+        'lookback': '$lookback'
+      }).toString();
+  static String memorySimilarEventsWithParams(
+          {String symbol = 'BTC', int limit = 5}) =>
+      Uri.parse(memorySimilarEvents).replace(
+          queryParameters: {'symbol': symbol, 'limit': '$limit'}).toString();
   static String memoryMarketCyclesWithParams({String symbol = 'BTC'}) =>
-      Uri.parse(memoryMarketCycles).replace(queryParameters: {'symbol': symbol}).toString();
+      Uri.parse(memoryMarketCycles)
+          .replace(queryParameters: {'symbol': symbol}).toString();
 
   // ─────────────────────────────────────────────────────────────
   // Risk Management
