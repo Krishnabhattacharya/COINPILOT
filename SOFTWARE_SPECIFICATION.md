@@ -1732,3 +1732,15 @@ STRIPE_ELITE_PRICE_ID=
 ---
 
 *Coinastra v1.1.0 — 2026-05-25 — Frontend + Backend integration complete, live on Vercel*
+
+
+
+deploy both--
+
+1)flutter build web --release --base-href /app/
+2)cp -r build/web/. ../nextjs-app/public/app/            
+
+cd ..
+git add .
+git commit -m "send otp"
+git push origin dev_krishna
