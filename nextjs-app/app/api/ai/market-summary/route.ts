@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export const dynamic = "force-dynamic";
 
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://10.24.227.45:5000";
+const BACKEND_URL = process.env.BACKEND_URL ??"http://10.255.251.45:5000";
 
 interface FearGreedData {
   value: number;

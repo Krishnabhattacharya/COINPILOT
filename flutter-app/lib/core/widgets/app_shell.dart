@@ -46,7 +46,7 @@ class _BottomNav extends StatelessWidget {
 
   static const _moreRoutes = {
     '/analysis', '/memory', '/sentiment', '/listings',
-    '/token-unlocks', '/portfolio',
+    '/token-unlocks',
     '/risk', '/journal', '/chat', '/profile', '/predictions',
   };
 
@@ -161,7 +161,6 @@ class _MoreSheet extends StatelessWidget {
       _MoreEntry('/token-unlocks', Icons.lock_open_rounded, 'Token Unlocks', AppColors.brandAmber),
     ]),
     _MoreSection('TRADING', [
-      _MoreEntry('/portfolio', Icons.pie_chart_rounded, 'Portfolio', AppColors.brandPurple),
       _MoreEntry('/risk', Icons.shield_rounded, 'Risk Manager', AppColors.brandRed),
       _MoreEntry('/journal', Icons.book_rounded, 'Trade Journal', AppColors.brandBlue),
     ]),

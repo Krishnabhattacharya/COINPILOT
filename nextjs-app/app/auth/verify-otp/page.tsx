@@ -65,8 +65,8 @@ function VerifyOTPContent() {
           window.location.replace(base === "http://localhost:8080" ? `${base}/dashboard` : "/app/");
         }, 1500);
       } else {
-        // password_reset — go to reset-password page with credentials
-        window.location.replace(`/auth/reset-password?email=${encodeURIComponent(email)}&otp=${encodeURIComponent(code)}`);
+        // password_reset — OTP verified server-side, just pass email
+        window.location.replace(`/auth/reset-password?email=${encodeURIComponent(email)}`);
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -79,19 +79,11 @@ function VerifyOTPContent() {
     setResending(true);
     setError("");
     try {
-      if (type === "email_verification") {
-        await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, resend: true }),
-        });
-      } else {
-        await fetch("/api/auth/forgot-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
-      }
+      await fetch("/api/auth/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
     } catch {}
     setResending(false);
   };
@@ -134,12 +126,10 @@ function VerifyOTPContent() {
                     We sent a 6-digit code to{" "}
                     {email ? <span className="text-white/60">{email}</span> : "your email address"}
                   </p>
-                  {type === "email_verification" && (
-                    <p className="text-xs text-white/30 mt-1">
-                      Sent from{" "}
-                      <span className="text-[#00ff88] font-medium">babuvochay112@gmail.com</span>
-                    </p>
-                  )}
+                  <p className="text-xs text-white/30 mt-2 flex items-center justify-center gap-1.5">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#00ff88]" />
+                    Sent successfully &mdash; check your spam if you don&apos;t see it
+                  </p>
                 </div>
 
                 {error && (

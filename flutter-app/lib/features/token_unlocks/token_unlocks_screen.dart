@@ -1,15 +1,79 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+// import 'package:flutter_riverpod/flutter_riverpod.dart';
+// import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/widgets/glass_card.dart';
-import '../../providers/token_unlocks_provider.dart';
+// import '../../core/widgets/glass_card.dart';
+// import '../../providers/token_unlocks_provider.dart';
 
-class TokenUnlocksScreen extends ConsumerStatefulWidget {
+class TokenUnlocksScreen extends StatelessWidget {
   const TokenUnlocksScreen({super.key});
 
   @override
-  ConsumerState<TokenUnlocksScreen> createState() => _TokenUnlocksScreenState();
+  Widget build(BuildContext context) => const _ComingSoon(
+        icon: Icons.lock_open_rounded,
+        title: 'Token Unlocks',
+        subtitle: 'Monitor upcoming token unlock events and\nvesting schedules. Launching very soon.',
+      );
+}
+
+class _ComingSoon extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  const _ComingSoon({required this.icon, required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.brandGreen.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.brandGreen.withValues(alpha: 0.18)),
+              ),
+              child: Icon(icon, size: 32, color: AppColors.brandGreen),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.brandGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.brandGreen.withValues(alpha: 0.2)),
+              ),
+              child: const Text('COMING SOON', style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w700,
+                color: AppColors.brandGreen, letterSpacing: 1.4,
+              )),
+            ),
+            const SizedBox(height: 16),
+            Text(title, style: const TextStyle(
+              fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white,
+            )),
+            const SizedBox(height: 10),
+            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(
+              fontSize: 14, color: AppColors.textMuted, height: 1.6,
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/* ── Original screen (temporarily disabled) ────────────────────────────────
+
+class _TokenUnlocksScreenOld extends ConsumerStatefulWidget {
+  const _TokenUnlocksScreenOld({super.key});
+
+  @override
+  ConsumerState<_TokenUnlocksScreenOld> createState() => _TokenUnlocksScreenState();
 }
 
 class _TokenUnlocksScreenState extends ConsumerState<TokenUnlocksScreen> {
@@ -498,3 +562,5 @@ class _UnlockStat extends StatelessWidget {
     );
   }
 }
+
+─────────────────────────────────────────────────────────────────────────── */

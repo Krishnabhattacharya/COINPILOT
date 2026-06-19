@@ -14,7 +14,6 @@ const passwordRequirements = [
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email") ?? "";
-  const otp = searchParams.get("otp") ?? "";
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,7 +40,7 @@ function ResetPasswordContent() {
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp, newPassword: password }),
+        body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
       if (!res.ok) {

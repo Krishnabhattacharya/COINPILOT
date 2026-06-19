@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://10.24.227.45:5000";
+const BACKEND_URL = process.env.BACKEND_URL ?? "http://10.255.251.45:5000";
 
 export async function POST(req: NextRequest) {
   try {

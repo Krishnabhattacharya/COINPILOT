@@ -1,22 +1,86 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+// import 'package:flutter_riverpod/flutter_riverpod.dart';
+// import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/widgets/glass_card.dart';
-import '../../core/remote/data/new_listings/models/new_listings_models.dart';
-import '../../providers/new_listings_provider.dart';
-import '../../providers/ai_analysis_provider.dart';
+// import '../../core/widgets/glass_card.dart';
+// import '../../core/remote/data/new_listings/models/new_listings_models.dart';
+// import '../../providers/new_listings_provider.dart';
+// import '../../providers/ai_analysis_provider.dart';
 
-const _filters = ['All', 'AI', 'Meme', 'DeFi', 'Gaming', 'RWA'];
+// const _filters = ['All', 'AI', 'Meme', 'DeFi', 'Gaming', 'RWA'];
 
-class NewListingsScreen extends ConsumerStatefulWidget {
+class NewListingsScreen extends StatelessWidget {
   const NewListingsScreen({super.key});
 
   @override
-  ConsumerState<NewListingsScreen> createState() => _NewListingsScreenState();
+  Widget build(BuildContext context) => const _ComingSoon(
+        icon: Icons.new_releases_rounded,
+        title: 'New Listings',
+        subtitle: 'Track newly listed tokens across major exchanges.\nLaunching very soon.',
+      );
 }
 
-class _NewListingsScreenState extends ConsumerState<NewListingsScreen> {
+class _ComingSoon extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  const _ComingSoon({required this.icon, required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72, height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.brandGreen.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.brandGreen.withValues(alpha: 0.18)),
+              ),
+              child: Icon(icon, size: 32, color: AppColors.brandGreen),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.brandGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.brandGreen.withValues(alpha: 0.2)),
+              ),
+              child: const Text('COMING SOON', style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w700,
+                color: AppColors.brandGreen, letterSpacing: 1.4,
+              )),
+            ),
+            const SizedBox(height: 16),
+            Text(title, style: const TextStyle(
+              fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white,
+            )),
+            const SizedBox(height: 10),
+            Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(
+              fontSize: 14, color: AppColors.textMuted, height: 1.6,
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/* ── Original screen (temporarily disabled) ────────────────────────────────
+
+class _NewListingsScreenOld extends ConsumerStatefulWidget {
+  const _NewListingsScreenOld({super.key});
+
+  @override
+  ConsumerState<_NewListingsScreenOld> createState() => _NewListingsScreenState();
+}
+
+class _NewListingsScreenState extends ConsumerState<_NewListingsScreenOld> {
   final _searchController = TextEditingController();
 
   @override
@@ -635,3 +699,5 @@ class _StatPill extends StatelessWidget {
     );
   }
 }
+
+─────────────────────────────────────────────────────────────────────────── */

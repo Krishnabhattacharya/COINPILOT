@@ -17,7 +17,7 @@ const httpProxy = require("http-proxy");
 
 const NEXTJS_URL = "http://localhost:3000";
 const FLUTTER_URL = "http://localhost:5001";
-const BACKEND_URL = "http://10.24.227.45:5000";
+const BACKEND_URL = "http://10.255.251.45:5000";
 const PROXY_PORT = 8080;
 
 // Routes that belong to the Flutter dashboard
@@ -103,7 +103,7 @@ function isFlutterRequest(url, referer) {
     try {
       const refPath = new URL(referer).pathname;
       if (isFlutterRoute(refPath)) return true;
-    } catch (_) {}
+    } catch (_) { }
   }
   return false;
 }
@@ -164,7 +164,7 @@ server.listen(PROXY_PORT, () => {
   console.log(`│   Proxy   →  http://localhost:${PROXY_PORT}          │`);
   console.log(`│   Next.js →  http://localhost:3000           │`);
   console.log(`│   Flutter →  http://localhost:5001           │`);
-  console.log(`│   Backend →  http://10.24.227.45:5000        │`);
+  console.log(`│   Backend →  http://10.255.251.45:5000        │`);
   console.log("└─────────────────────────────────────────────┘\n");
   console.log("  Open  http://localhost:8080  in your browser.\n");
 });
