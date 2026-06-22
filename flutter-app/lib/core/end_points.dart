@@ -73,6 +73,9 @@ class EndPoints {
   static const String analysisPatterns = '$apiBaseUrl/analysis/patterns';
   static const String detectPattern = '$apiBaseUrl/charts/detect-pattern';
 
+  // Feedback
+  static const String feedback = '$apiBaseUrl/feedback';
+
   // ─────────────────────────────────────────────────────────────
   // New Listings (NEW — backend to build)
   // GET ?page=1&limit=20

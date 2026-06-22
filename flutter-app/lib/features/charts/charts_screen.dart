@@ -362,6 +362,37 @@ class _SelectedChart extends ConsumerWidget {
           ),
         ),
 
+        // AI min-timeframe warning card
+        if (!n.aiOverlayActive && n.aiMinTfMessage != null)
+          Positioned(
+            left: 16,
+            top: 16,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 240),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.bgCard.withAlpha(230),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.withAlpha(80)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      size: 13, color: Colors.amber),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      n.aiMinTfMessage!,
+                      style: const TextStyle(
+                          fontSize: 10, color: Colors.amber),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
         // AI Pattern Box Overlay
         if (n.aiOverlayActive)
           Positioned(

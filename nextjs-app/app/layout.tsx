@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://coinastra.site";
@@ -161,6 +162,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-bg-primary text-white antialiased overflow-x-hidden">
         {children}
+        <Analytics />
       </body>
     </html>
   );

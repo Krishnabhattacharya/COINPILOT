@@ -64,6 +64,7 @@ class ChartsNotifier extends ChangeNotifier {
   PatternResult? _patternResult;
   bool _patternLoading = false;
   String? _patternError;
+  String? _aiMinTfMessage;
 
   static const _timeframeOrder = ['1m', '5m', '15m', '1H', '4H', '1D', '1W'];
   static const _minAiTfIndex = 4; // minimum: 4H
@@ -93,6 +94,7 @@ class ChartsNotifier extends ChangeNotifier {
   PatternResult? get patternResult => _patternResult;
   bool get patternLoading => _patternLoading;
   String? get patternError => _patternError;
+  String? get aiMinTfMessage => _aiMinTfMessage;
 
   // Actions
   void setCoin(String coin) {
@@ -107,6 +109,15 @@ class ChartsNotifier extends ChangeNotifier {
   void setTimeframe(String t) {
     if (_timeframe == t) return;
     _timeframe = t;
+    final idx = _timeframeOrder.indexOf(t);
+    if (_aiOverlayActive && idx < _minAiTfIndex) {
+      _aiOverlayActive = false;
+      _patternResult = null;
+      _patternError = null;
+      _aiMinTfMessage = 'AI overlay requires 4H or higher timeframe';
+    } else if (_aiMinTfMessage != null && idx >= _minAiTfIndex) {
+      _aiMinTfMessage = null;
+    }
     notifyListeners();
     loadCandles();
   }
@@ -120,10 +131,13 @@ class ChartsNotifier extends ChangeNotifier {
   void setChartType(String t) {
     if (_chartType == t) return;
     _chartType = t;
-    if (t == 'Line' && _aiOverlayActive) {
-      _aiOverlayActive = false;
-      _patternResult = null;
-      _patternError = null;
+    if (t == 'Line') {
+      if (_aiOverlayActive) {
+        _aiOverlayActive = false;
+        _patternResult = null;
+        _patternError = null;
+      }
+      _aiMinTfMessage = null;
     }
     notifyListeners();
   }
@@ -157,15 +171,15 @@ class ChartsNotifier extends ChangeNotifier {
 
   void toggleAiOverlayActive() {
     _aiOverlayActive = !_aiOverlayActive;
+    _aiMinTfMessage = null;
     if (_aiOverlayActive) {
       final idx = _timeframeOrder.indexOf(_timeframe);
       if (idx < _minAiTfIndex) {
-        // Upgrade to 1H minimum — loadCandles will call _fetchPattern on completion
-        _timeframe = '1H';
+        // Upgrade to minimum required timeframe — loadCandles will call _fetchPattern on completion
+        _timeframe = _timeframeOrder[_minAiTfIndex];
         notifyListeners();
         loadCandles();
       } else {
-        
         notifyListeners();
         _fetchPattern();
       }

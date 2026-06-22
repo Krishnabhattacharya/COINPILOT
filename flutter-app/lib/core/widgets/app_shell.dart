@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
+import 'feedback_widget.dart';
 import 'sidebar.dart';
 import 'top_bar.dart';
 
@@ -13,29 +14,36 @@ class AppShell extends StatelessWidget {
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 1024;
 
+    final mainContent = isDesktop
+        ? Row(
+            children: [
+              const AppSidebar(),
+              Expanded(
+                child: Column(
+                  children: [
+                    const TopBar(),
+                    Expanded(child: ClipRect(child: child)),
+                  ],
+                ),
+              ),
+            ],
+          )
+        : Column(
+            children: [
+              const TopBar(),
+              Expanded(child: child),
+              _BottomNav(currentRoute: GoRouterState.of(context).uri.path),
+            ],
+          );
+
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
-      body: isDesktop
-          ? Row(
-              children: [
-                const AppSidebar(),
-                Expanded(
-                  child: Column(
-                    children: [
-                      const TopBar(),
-                      Expanded(child: ClipRect(child: child)),
-                    ],
-                  ),
-                ),
-              ],
-            )
-          : Column(
-              children: [
-                const TopBar(),
-                Expanded(child: child),
-                _BottomNav(currentRoute: GoRouterState.of(context).uri.path),
-              ],
-            ),
+      body: Stack(
+        children: [
+          mainContent,
+          const FeedbackTab(),
+        ],
+      ),
     );
   }
 }
