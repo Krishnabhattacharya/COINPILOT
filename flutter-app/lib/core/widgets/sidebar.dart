@@ -43,7 +43,7 @@ class AppSidebar extends StatelessWidget {
                   const _SectionLabel('MARKET'),
                   _SidebarItem('/charts', Icons.candlestick_chart_rounded, 'Charts', currentRoute),
                   _SidebarItem('/orderbook', Icons.menu_rounded, 'Order Book', currentRoute),
-                  _SidebarItem('/sentiment', Icons.sentiment_satisfied_rounded, 'Sentiment', currentRoute),
+                  _SidebarItem('/sentiment', Icons.newspaper_rounded, 'News', currentRoute),
                   _SidebarItem('/listings', Icons.new_releases_rounded, 'New Listings', currentRoute,
                     badge: 'HOT'),
                   const SizedBox(height: 16),

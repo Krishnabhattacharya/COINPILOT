@@ -1,8 +1,26 @@
 double _n(dynamic v) => (v as num?)?.toDouble() ?? 0.0;
 double? _nOpt(dynamic v) => v == null ? null : (v as num?)?.toDouble();
+
+String? _cleanUrl(String? v) {
+  if (v == null || v.isEmpty) return null;
+  return v
+      .replaceAll('&amp;', '&')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>');
+}
+
 DateTime? _date(dynamic v) {
   if (v == null) return null;
   try {
+    // Handles ISO strings AND unix timestamps (seconds), e.g. publishedOn: 1782305290
+    if (v is num) {
+      return DateTime.fromMillisecondsSinceEpoch(v.toInt() * 1000);
+    }
+    final asNum = num.tryParse(v.toString());
+    if (asNum != null) {
+      return DateTime.fromMillisecondsSinceEpoch(asNum.toInt() * 1000);
+    }
     return DateTime.parse(v.toString());
   } catch (_) {
     return null;
@@ -16,10 +34,12 @@ class SentimentNewsItem {
   final String title;
   final String? description;
   final String? url;
+  final String? imageUrl;
   final String source;
   final String sentiment;
   final double? sentimentScore;
   final String? rationale;
+  final String? aiSummary;
   final DateTime? publishedAt;
 
   const SentimentNewsItem({
@@ -27,25 +47,61 @@ class SentimentNewsItem {
     required this.title,
     this.description,
     this.url,
+    this.imageUrl,
     required this.source,
     required this.sentiment,
     this.sentimentScore,
     this.rationale,
+    this.aiSummary,
     this.publishedAt,
   });
 
-  factory SentimentNewsItem.fromJson(Map<String, dynamic> j) =>
-      SentimentNewsItem(
-        id: j['id']?.toString() ?? j['_id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
-        title: j['title']?.toString() ?? '',
-        description: j['description']?.toString() ?? j['summary']?.toString(),
-        url: j['url']?.toString() ?? j['link']?.toString(),
-        source: j['source']?.toString() ?? j['publisher']?.toString() ?? 'Unknown',
-        sentiment: j['sentiment']?.toString() ?? 'neutral',
-        sentimentScore: _nOpt(j['sentimentScore'] ?? j['score'] ?? j['aiScore']),
-        rationale: j['rationale']?.toString() ?? j['reasoning']?.toString(),
-        publishedAt: _date(j['publishedAt'] ?? j['published_at'] ?? j['pubDate'] ?? j['createdAt']),
-      );
+  factory SentimentNewsItem.fromJson(Map<String, dynamic> j) {
+    // sentiment can arrive as a nested object: {score, label, rationale, summary}
+    final sentRaw = j['sentiment'];
+    final sentMap = sentRaw is Map ? Map<String, dynamic>.from(sentRaw) : null;
+
+    return SentimentNewsItem(
+      id: j['id']?.toString() ??
+          j['_id']?.toString() ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
+      title: j['title']?.toString() ?? '',
+      description: j['description']?.toString() ??
+          j['summary']?.toString() ??
+          j['body']?.toString(),
+      url: j['url']?.toString() ?? j['link']?.toString(),
+      imageUrl: _cleanUrl(
+        j['imageUrl']?.toString() ??
+            j['image_url']?.toString() ??
+            j['imageurl']?.toString() ??
+            j['urlToImage']?.toString() ??
+            j['image']?.toString() ??
+            j['thumbnail']?.toString() ??
+            j['img']?.toString() ??
+            j['cover']?.toString(),
+      ),
+      source:
+          j['source']?.toString() ?? j['publisher']?.toString() ?? 'Unknown',
+      sentiment: sentMap?['label']?.toString() ??
+          j['sentiment']?.toString() ??
+          'neutral',
+      sentimentScore: _nOpt(sentMap?['score'] ??
+          j['sentimentScore'] ??
+          j['score'] ??
+          j['aiScore']),
+      rationale: sentMap?['rationale']?.toString() ??
+          j['rationale']?.toString() ??
+          j['reasoning']?.toString(),
+      aiSummary: sentMap?['summary']?.toString(),
+      publishedAt: _date(
+        j['publishedAt'] ??
+            j['published_at'] ??
+            j['publishedOn'] ?? // ← actual API key
+            j['pubDate'] ??
+            j['createdAt'],
+      ),
+    );
+  }
 }
 
 // ── Fear & Greed ──────────────────────────────────────────────────────────────
@@ -89,8 +145,14 @@ class BinanceFuturesData {
 
   factory BinanceFuturesData.fromJson(Map<String, dynamic> j) =>
       BinanceFuturesData(
-        longAccount: _n(j['longAccount'] ?? j['longAccountPercent'] ?? j['buyRatio'] ?? j['longRatio']),
-        shortAccount: _n(j['shortAccount'] ?? j['shortAccountPercent'] ?? j['sellRatio'] ?? j['shortRatio']),
+        longAccount: _n(j['longAccount'] ??
+            j['longAccountPercent'] ??
+            j['buyRatio'] ??
+            j['longRatio']),
+        shortAccount: _n(j['shortAccount'] ??
+            j['shortAccountPercent'] ??
+            j['sellRatio'] ??
+            j['shortRatio']),
         longShortRatio: _n(j['longShortRatio'] ?? j['ratio'] ?? j['lsRatio']),
       );
 
@@ -129,11 +191,18 @@ class SocialPost {
   });
 
   factory SocialPost.fromJson(Map<String, dynamic> j) => SocialPost(
-        author: j['author']?.toString() ?? j['username']?.toString() ?? j['user']?.toString() ?? 'Unknown',
-        content: j['content']?.toString() ?? j['text']?.toString() ?? j['body']?.toString() ?? '',
+        author: j['author']?.toString() ??
+            j['username']?.toString() ??
+            j['user']?.toString() ??
+            'Unknown',
+        content: j['content']?.toString() ??
+            j['text']?.toString() ??
+            j['body']?.toString() ??
+            '',
         platform: j['platform']?.toString() ?? 'unknown',
         sentiment: j['sentiment']?.toString(),
-        publishedAt: _date(j['publishedAt'] ?? j['created_at'] ?? j['timestamp']),
+        publishedAt:
+            _date(j['publishedAt'] ?? j['created_at'] ?? j['timestamp']),
         likes: (j['likes'] ?? j['upvotes'] ?? j['score'] as num?)?.toInt(),
         comments: (j['comments'] ?? j['numComments'] as num?)?.toInt(),
         subreddit: j['subreddit']?.toString(),
@@ -160,10 +229,16 @@ class PlatformSentiment {
   factory PlatformSentiment.fromJson(Map<String, dynamic> j) {
     final rawPosts = j['posts'] ?? j['tweets'] ?? j['items'] ?? [];
     return PlatformSentiment(
-      bullishPercent: _n(j['bullishPercent'] ?? j['bullish_percent'] ?? j['bullish']),
-      bearishPercent: _n(j['bearishPercent'] ?? j['bearish_percent'] ?? j['bearish']),
-      neutralPercent: _n(j['neutralPercent'] ?? j['neutral_percent'] ?? j['neutral']),
-      totalMentions: (j['totalMentions'] ?? j['total_mentions'] ?? j['mentions'] as num?)?.toInt() ?? 0,
+      bullishPercent:
+          _n(j['bullishPercent'] ?? j['bullish_percent'] ?? j['bullish']),
+      bearishPercent:
+          _n(j['bearishPercent'] ?? j['bearish_percent'] ?? j['bearish']),
+      neutralPercent:
+          _n(j['neutralPercent'] ?? j['neutral_percent'] ?? j['neutral']),
+      totalMentions:
+          (j['totalMentions'] ?? j['total_mentions'] ?? j['mentions'] as num?)
+                  ?.toInt() ??
+              0,
       volumeChange24h: _nOpt(j['volumeChange24h'] ?? j['volume_change']),
       posts: (rawPosts as List)
           .whereType<Map>()
@@ -200,10 +275,18 @@ class SocialSentimentData {
     final tRaw = j['twitter'] ?? j['Twitter'];
     final rRaw = j['reddit'] ?? j['Reddit'];
     return SocialSentimentData(
-      fearAndGreed: fgRaw is Map ? FearGreedData.fromJson(Map<String, dynamic>.from(fgRaw)) : null,
-      binanceFutures: bfRaw is Map ? BinanceFuturesData.fromJson(Map<String, dynamic>.from(bfRaw)) : null,
-      twitter: tRaw is Map ? PlatformSentiment.fromJson(Map<String, dynamic>.from(tRaw)) : null,
-      reddit: rRaw is Map ? PlatformSentiment.fromJson(Map<String, dynamic>.from(rRaw)) : null,
+      fearAndGreed: fgRaw is Map
+          ? FearGreedData.fromJson(Map<String, dynamic>.from(fgRaw))
+          : null,
+      binanceFutures: bfRaw is Map
+          ? BinanceFuturesData.fromJson(Map<String, dynamic>.from(bfRaw))
+          : null,
+      twitter: tRaw is Map
+          ? PlatformSentiment.fromJson(Map<String, dynamic>.from(tRaw))
+          : null,
+      reddit: rRaw is Map
+          ? PlatformSentiment.fromJson(Map<String, dynamic>.from(rRaw))
+          : null,
     );
   }
 }
@@ -266,9 +349,14 @@ class CoinSentimentData {
         final fgVal = _n(fg['value']);
         signals.add(CoinSignal(
           type: 'sentiment',
-          signal: fgVal >= 60 ? 'bullish' : fgVal <= 40 ? 'bearish' : 'neutral',
+          signal: fgVal >= 60
+              ? 'bullish'
+              : fgVal <= 40
+                  ? 'bearish'
+                  : 'neutral',
           confidence: fgVal,
-          description: 'Fear & Greed: ${fg['classification'] ?? _fearGreedLabel(fgVal)}',
+          description:
+              'Fear & Greed: ${fg['classification'] ?? _fearGreedLabel(fgVal)}',
         ));
       }
       final nvtRaw = j['nvtRatio'] ?? j['nvt'];
@@ -294,7 +382,11 @@ class CoinSentimentData {
         final lsr = _nOpt(d['longShortRatio'] ?? d['lsRatio']) ?? 1.0;
         signals.add(CoinSignal(
           type: 'technical',
-          signal: lsr > 1.15 ? 'bullish' : lsr < 0.85 ? 'bearish' : 'neutral',
+          signal: lsr > 1.15
+              ? 'bullish'
+              : lsr < 0.85
+                  ? 'bearish'
+                  : 'neutral',
           confidence: (lsr * 50).clamp(0, 100),
           description: 'Long/Short Ratio: ${lsr.toStringAsFixed(3)}',
         ));
@@ -304,10 +396,14 @@ class CoinSentimentData {
     return CoinSentimentData(
       coinId: j['coinId']?.toString() ?? j['coin_id']?.toString() ?? '',
       symbol: j['symbol']?.toString() ?? '',
-      overallSentiment: j['overallSentiment']?.toString() ?? j['sentiment']?.toString() ?? 'neutral',
+      overallSentiment: j['overallSentiment']?.toString() ??
+          j['sentiment']?.toString() ??
+          'neutral',
       overallScore: _n(j['overallScore'] ?? j['score'] ?? j['sentimentScore']),
       signals: signals,
-      aiSummary: j['aiSummary']?.toString() ?? j['summary']?.toString() ?? j['consensus']?.toString(),
+      aiSummary: j['aiSummary']?.toString() ??
+          j['summary']?.toString() ??
+          j['consensus']?.toString(),
       price: _nOpt(j['price'] ?? j['currentPrice']),
       priceChange24h: _nOpt(j['priceChange24h'] ?? j['change24h']),
     );
@@ -344,12 +440,12 @@ class OnChainIndicator {
     required this.description,
   });
 
-  factory OnChainIndicator.fromJson(Map<String, dynamic> j) =>
-      OnChainIndicator(
+  factory OnChainIndicator.fromJson(Map<String, dynamic> j) => OnChainIndicator(
         name: j['name']?.toString() ?? '',
         value: j['value']?.toString() ?? '—',
         signal: j['signal']?.toString() ?? 'Neutral',
-        description: j['description']?.toString() ?? j['explanation']?.toString() ?? '',
+        description:
+            j['description']?.toString() ?? j['explanation']?.toString() ?? '',
       );
 }
 
@@ -366,8 +462,7 @@ class ExchangeFlows {
     this.reserve,
   });
 
-  factory ExchangeFlows.fromJson(Map<String, dynamic> j) =>
-      ExchangeFlows(
+  factory ExchangeFlows.fromJson(Map<String, dynamic> j) => ExchangeFlows(
         inflow: _n(j['inflow'] ?? j['exchangeInflow']),
         outflow: _n(j['outflow'] ?? j['exchangeOutflow']),
         netFlow: _n(j['netFlow'] ?? j['net_flow']),
@@ -434,7 +529,8 @@ void _extractCoinIndicators(
       name: '$prefix NVT Ratio',
       value: val?.toString() ?? '—',
       signal: sig,
-      description: 'Network Value ÷ 24h Transaction Volume. Higher = overvalued.',
+      description:
+          'Network Value ÷ 24h Transaction Volume. Higher = overvalued.',
     ));
   }
 
@@ -447,7 +543,11 @@ void _extractCoinIndicators(
       out.add(OnChainIndicator(
         name: '$prefix Funding Rate',
         value: '${frVal >= 0 ? '+' : ''}$frPct%',
-        signal: frVal > 0.0005 ? 'Longs Paying' : frVal < -0.0005 ? 'Shorts Paying' : 'Neutral',
+        signal: frVal > 0.0005
+            ? 'Longs Paying'
+            : frVal < -0.0005
+                ? 'Shorts Paying'
+                : 'Neutral',
         description: 'Perpetual futures 8h funding rate.',
       ));
     }
@@ -467,7 +567,11 @@ void _extractCoinIndicators(
       out.add(OnChainIndicator(
         name: '$prefix L/S Ratio',
         value: lsrVal.toStringAsFixed(3),
-        signal: lsrVal > 1.15 ? 'Bullish' : lsrVal < 0.85 ? 'Bearish' : 'Neutral',
+        signal: lsrVal > 1.15
+            ? 'Bullish'
+            : lsrVal < 0.85
+                ? 'Bearish'
+                : 'Neutral',
         description: 'Long vs short account ratio from Binance Futures.',
       ));
     }

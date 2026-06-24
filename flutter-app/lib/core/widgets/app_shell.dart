@@ -161,7 +161,7 @@ class _MoreSheet extends StatelessWidget {
       _MoreEntry('/predictions', Icons.leaderboard_rounded, 'AI Accuracy', AppColors.brandAmber),
     ]),
     _MoreSection('MARKET', [
-      _MoreEntry('/sentiment', Icons.sentiment_satisfied_rounded, 'Sentiment', AppColors.brandAmber),
+      _MoreEntry('/sentiment', Icons.newspaper_rounded, 'News', AppColors.brandAmber),
       _MoreEntry('/listings', Icons.new_releases_rounded, 'New Listings', AppColors.brandGreen),
       _MoreEntry('/orderbook', Icons.menu_rounded, 'Order Book', AppColors.brandBlue),
     ]),

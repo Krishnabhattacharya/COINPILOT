@@ -354,7 +354,8 @@ class DashboardSocket {
     connect();
   }
 
-  void _subscribe() {
+  void 
+  _subscribe() {
     final Set<String> allSymbols = {'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'DOGEUSDT'};
     if (_activeChartSymbol != null && _activeChartSymbol!.isNotEmpty) {
       allSymbols.add(_activeChartSymbol!.toUpperCase());

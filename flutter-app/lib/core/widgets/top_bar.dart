@@ -296,7 +296,7 @@ class _SearchDialogState extends ConsumerState<_SearchDialog> {
     _SearchItem('Trade Now', 'AI trading signal aggregator', '/trade-now', Icons.bolt_rounded, AppColors.brandGreen),
     _SearchItem('AI Analysis', 'Deep AI coin analysis', '/analysis', Icons.psychology_rounded, AppColors.brandPurple),
     _SearchItem('Charts', 'Candlestick & technical analysis', '/charts', Icons.candlestick_chart_rounded, AppColors.brandBlue),
-    _SearchItem('Sentiment', 'News & social sentiment', '/sentiment', Icons.sentiment_satisfied_rounded, AppColors.brandAmber),
+    _SearchItem('News', 'Market news & coin signals', '/sentiment', Icons.newspaper_rounded, AppColors.brandAmber),
     _SearchItem('New Listings', 'New coin listings & AI scoring', '/listings', Icons.new_releases_rounded, AppColors.brandGreen),
     _SearchItem('Order Book', 'Bid/ask walls & depth', '/orderbook', Icons.menu_rounded, AppColors.brandBlue),
     _SearchItem('Token Unlocks', 'Vesting schedule & risk', '/token-unlocks', Icons.lock_open_rounded, AppColors.brandAmber),

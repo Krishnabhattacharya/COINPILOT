@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+import 'dart:ui_web' as ui_web;
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../core/remote/data/sentiment/sentiment_models.dart';
 import '../../providers/sentiment_provider.dart';
+import '../../providers/dashboard_provider.dart';
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
@@ -22,7 +26,7 @@ class _NewsSentimentScreenState extends ConsumerState<NewsSentimentScreen>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 4, vsync: this);
+    _tabs = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -33,22 +37,17 @@ class _NewsSentimentScreenState extends ConsumerState<NewsSentimentScreen>
 
   @override
   Widget build(BuildContext context) {
-    final social = ref.watch(sentimentSocialProvider);
-    final overallScore = social.valueOrNull?.overallBullish.round() ?? 0;
-
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       body: Column(
         children: [
-          _Header(tabController: _tabs, sentimentScore: overallScore),
+          _Header(tabController: _tabs),
           Expanded(
             child: TabBarView(
               controller: _tabs,
               children: const [
                 _NewsTab(),
-                _SocialTab(),
                 _CoinSignalsTab(),
-                _OnChainTab(),
               ],
             ),
           ),
@@ -62,8 +61,7 @@ class _NewsSentimentScreenState extends ConsumerState<NewsSentimentScreen>
 
 class _Header extends StatelessWidget {
   final TabController tabController;
-  final int sentimentScore;
-  const _Header({required this.tabController, required this.sentimentScore});
+  const _Header({required this.tabController});
 
   @override
   Widget build(BuildContext context) {
@@ -75,50 +73,13 @@ class _Header extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LayoutBuilder(
-            builder: (_, constraints) {
-              final meter = _SentimentMeter(value: sentimentScore);
-              if (constraints.maxWidth < 380) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('News & Sentiment',
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white)),
-                    const Text('Real-time market sentiment aggregation',
-                        style: TextStyle(
-                            fontSize: 12, color: AppColors.textMuted)),
-                    const SizedBox(height: 10),
-                    meter,
-                  ],
-                );
-              }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('News & Sentiment',
-                            style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white)),
-                        Text('Real-time market sentiment aggregation',
-                            style: TextStyle(
-                                fontSize: 12, color: AppColors.textMuted)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  meter,
-                ],
-              );
-            },
-          ),
+          const Text('News',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white)),
+          const Text('Real-time market news aggregation',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
           const SizedBox(height: 16),
           TabBar(
             controller: tabController,
@@ -135,63 +96,7 @@ class _Header extends StatelessWidget {
             dividerColor: Colors.transparent,
             tabs: const [
               Tab(text: 'News'),
-              Tab(text: 'Social'),
               Tab(text: 'Coin Signals'),
-              Tab(text: 'On-Chain'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SentimentMeter extends StatelessWidget {
-  final int value;
-  const _SentimentMeter({required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = value > 60
-        ? AppColors.brandGreen
-        : value > 45
-            ? AppColors.brandAmber
-            : value == 0
-                ? AppColors.textMuted
-                : AppColors.brandRed;
-    final label = value > 60
-        ? 'Bullish'
-        : value > 45
-            ? 'Neutral'
-            : value == 0
-                ? '—'
-                : 'Bearish';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withAlpha(15),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withAlpha(30)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(value > 0 ? '$value' : '—',
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  color: color,
-                  fontFamily: 'JetBrainsMono')),
-          const SizedBox(width: 6),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: color)),
-              const Text('Sentiment',
-                  style: TextStyle(fontSize: 9, color: AppColors.textMuted)),
             ],
           ),
         ],
@@ -207,26 +112,60 @@ class _NewsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final news = ref.watch(sentimentNewsProvider);
-    return news.when(
-      loading: () => const _LoadingView(),
-      error: (e, _) => _ErrorView(
-        message: e.toString(),
-        onRetry: () => ref.invalidate(sentimentNewsProvider),
-      ),
-      data: (items) => items.isEmpty
-          ? const _EmptyView(message: 'No news available')
-          : RefreshIndicator(
-              color: AppColors.brandGreen,
-              backgroundColor: AppColors.bgSecondary,
-              onRefresh: () async => ref.invalidate(sentimentNewsProvider),
-              child: ListView.separated(
-                padding: const EdgeInsets.all(20),
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (_, i) => _NewsCard(item: items[i]),
+    final state = ref.watch(sentimentNewsProvider);
+
+    if (state.isLoading && state.items.isEmpty) return const _LoadingView();
+    if (state.error != null && state.items.isEmpty) {
+      return _ErrorView(
+        message: state.error!,
+        onRetry: () => ref.read(sentimentNewsProvider.notifier).refresh(),
+      );
+    }
+    if (state.items.isEmpty) {
+      return const _EmptyView(message: 'No news available');
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: Stack(
+            children: [
+              RefreshIndicator(
+                color: AppColors.brandGreen,
+                backgroundColor: AppColors.bgSecondary,
+                onRefresh: () =>
+                    ref.read(sentimentNewsProvider.notifier).refresh(),
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: state.items.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (_, i) => _NewsCard(item: state.items[i]),
+                ),
               ),
-            ),
+              if (state.isLoading)
+                Container(
+                  color: AppColors.bgPrimary.withOpacity(0.6),
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.brandGreen,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        _PaginationBar(
+          page: state.page,
+          totalPages: state.totalPages,
+          hasNext: state.hasNextPage,
+          hasPrevious: state.hasPreviousPage,
+          isLoading: state.isLoading,
+          onNext: () => ref.read(sentimentNewsProvider.notifier).nextPage(),
+          onPrevious: () =>
+              ref.read(sentimentNewsProvider.notifier).previousPage(),
+        ),
+      ],
     );
   }
 }
@@ -258,15 +197,13 @@ class _NewsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _sentimentColor(item.sentiment);
     return GlassCard(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SizedBox(
-            width: constraints.maxWidth,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
             child: Container(
               decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: color, width: 3),
-                ),
+                border: Border(left: BorderSide(color: color, width: 3)),
               ),
               padding: const EdgeInsets.only(left: 10),
               child: Column(
@@ -325,565 +262,199 @@ class _NewsCard extends StatelessWidget {
                 ],
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-// ── Social Tab ────────────────────────────────────────────────────────────────
-
-class _SocialTab extends ConsumerWidget {
-  const _SocialTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final social = ref.watch(sentimentSocialProvider);
-    return social.when(
-      loading: () => const _LoadingView(),
-      error: (e, _) => _ErrorView(
-        message: e.toString(),
-        onRetry: () => ref.invalidate(sentimentSocialProvider),
-      ),
-      data: (data) {
-        final hasNewData = data.fearAndGreed != null || data.binanceFutures != null;
-        return RefreshIndicator(
-          color: AppColors.brandGreen,
-          backgroundColor: AppColors.bgSecondary,
-          onRefresh: () async => ref.invalidate(sentimentSocialProvider),
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              if (data.fearAndGreed != null) _FearGreedCard(data: data.fearAndGreed!),
-              if (data.binanceFutures != null) ...[
-                const SizedBox(height: 16),
-                _LongShortCard(data: data.binanceFutures!),
-              ],
-              if (data.twitter != null) ...[
-                const SizedBox(height: 16),
-                _PlatformSection(
-                  platform: 'Twitter / X',
-                  icon: Icons.tag_rounded,
-                  color: AppColors.brandBlue,
-                  data: data.twitter!,
-                ),
-              ],
-              if (data.reddit != null) ...[
-                const SizedBox(height: 16),
-                _PlatformSection(
-                  platform: 'Reddit',
-                  icon: Icons.forum_rounded,
-                  color: AppColors.brandRed,
-                  data: data.reddit!,
-                ),
-              ],
-              if (!hasNewData && data.twitter == null && data.reddit == null)
-                const _EmptyView(message: 'No social data available'),
-            ],
           ),
-        );
-      },
-    );
-  }
-}
-
-class _FearGreedCard extends StatelessWidget {
-  final FearGreedData data;
-  const _FearGreedCard({required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    final value = data.value.clamp(0, 100).toDouble();
-    final color = value >= 60
-        ? AppColors.brandGreen
-        : value >= 45
-            ? AppColors.brandAmber
-            : AppColors.brandRed;
-
-    final tiers = [
-      ('Extreme Fear', 0.0, 25.0),
-      ('Fear', 25.0, 45.0),
-      ('Neutral', 45.0, 55.0),
-      ('Greed', 55.0, 75.0),
-      ('Extreme Greed', 75.0, 100.0),
-    ];
-
-    return GlassCard(
-      borderColor: color.withAlpha(40),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Fear & Greed Index',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                    const SizedBox(height: 2),
-                    Text('Alternative.me · Updated daily',
-                        style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(value.toInt().toString(),
-                      style: TextStyle(
-                          fontSize: 36, fontWeight: FontWeight.w900,
-                          color: color, fontFamily: 'JetBrainsMono')),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: color.withAlpha(20),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: color.withAlpha(40)),
-                    ),
-                    child: Text(data.classification,
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Gradient bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: Stack(
-              children: [
-                Container(
-                  height: 8,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        AppColors.brandRed,
-                        AppColors.brandAmber,
-                        AppColors.brandGreen,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                Positioned(
-                  left: (value / 100 * (MediaQuery.of(context).size.width - 80)).clamp(0, double.infinity),
-                  top: 0,
-                  child: Container(
-                    width: 3, height: 8,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(2),
-                      boxShadow: const [BoxShadow(color: Colors.white, blurRadius: 4)],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: tiers.map((t) {
-              final (label, lo, hi) = t;
-              final active = value >= lo && (value < hi || (hi == 100 && value == 100));
-              return Text(label,
-                  style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: active ? FontWeight.w700 : FontWeight.w400,
-                      color: active ? color : AppColors.textDisabled));
-            }).toList(),
-          ),
+          if (item.imageUrl != null && item.imageUrl!.isNotEmpty) ...[
+            const SizedBox(width: 10),
+            _NewsImage(url: item.imageUrl!),
+          ],
         ],
       ),
     );
   }
 }
 
-class _LongShortCard extends StatelessWidget {
-  final BinanceFuturesData data;
-  const _LongShortCard({required this.data});
+// ── News image (HtmlElementView bypasses CanvasKit CORS) ─────────────────────
+
+class _NewsImage extends StatefulWidget {
+  final String url;
+  const _NewsImage({required this.url});
+
+  @override
+  State<_NewsImage> createState() => _NewsImageState();
+}
+
+class _NewsImageState extends State<_NewsImage> {
+  late final String _viewId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Unique viewId per instance so re-registering is safe
+    _viewId = 'ni${widget.url.hashCode.abs()}x${identityHashCode(this)}';
+    try {
+      ui_web.platformViewRegistry.registerViewFactory(_viewId, (_) {
+        return html.ImageElement()
+          ..src = widget.url
+          ..style.cssText =
+              'width:68px;height:68px;object-fit:cover;'
+              'border-radius:8px;display:block;';
+      });
+    } catch (_) {
+      // Already registered — safe to ignore
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final longPct = data.longAccount.clamp(0, 100).toDouble();
-    final shortPct = data.shortAccount.clamp(0, 100).toDouble();
-    final isLongDominant = data.isLongDominant;
-
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Binance Futures L/S',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
-                    const SizedBox(height: 2),
-                    const Text('Active account long/short ratio',
-                        style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: (isLongDominant ? AppColors.brandGreen : AppColors.brandRed).withAlpha(20),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: (isLongDominant ? AppColors.brandGreen : AppColors.brandRed).withAlpha(40)),
-                ),
-                child: Text(data.signal,
-                    style: TextStyle(
-                        fontSize: 10, fontWeight: FontWeight.w700,
-                        color: isLongDominant ? AppColors.brandGreen : AppColors.brandRed)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Long', style: TextStyle(fontSize: 11, color: AppColors.brandGreen)),
-                        Text('${longPct.toStringAsFixed(1)}%',
-                            style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w800,
-                                color: AppColors.brandGreen, fontFamily: 'JetBrainsMono')),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(
-                        value: longPct / 100,
-                        backgroundColor: AppColors.bgCard,
-                        valueColor: const AlwaysStoppedAnimation(AppColors.brandGreen),
-                        minHeight: 6,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Short', style: TextStyle(fontSize: 11, color: AppColors.brandRed)),
-                        Text('${shortPct.toStringAsFixed(1)}%',
-                            style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w800,
-                                color: AppColors.brandRed, fontFamily: 'JetBrainsMono')),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(3),
-                      child: LinearProgressIndicator(
-                        value: shortPct / 100,
-                        backgroundColor: AppColors.bgCard,
-                        valueColor: const AlwaysStoppedAnimation(AppColors.brandRed),
-                        minHeight: 6,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.bgTertiary,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Long/Short Ratio',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                Text(data.longShortRatio.toStringAsFixed(4),
-                    style: TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700,
-                        color: isLongDominant ? AppColors.brandGreen : AppColors.brandRed,
-                        fontFamily: 'JetBrainsMono')),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return SizedBox(
+      width: 68,
+      height: 68,
+      child: HtmlElementView(viewType: _viewId),
     );
   }
 }
 
-class _PlatformSection extends StatelessWidget {
-  final String platform;
-  final IconData icon;
-  final Color color;
-  final PlatformSentiment data;
+// ── Pagination bar ────────────────────────────────────────────────────────────
 
-  const _PlatformSection({
-    required this.platform,
-    required this.icon,
-    required this.color,
-    required this.data,
+class _PaginationBar extends StatelessWidget {
+  final int page;
+  final int? totalPages;
+  final bool hasNext;
+  final bool hasPrevious;
+  final bool isLoading;
+  final VoidCallback onNext;
+  final VoidCallback onPrevious;
+
+  const _PaginationBar({
+    required this.page,
+    this.totalPages,
+    required this.hasNext,
+    required this.hasPrevious,
+    required this.isLoading,
+    required this.onNext,
+    required this.onPrevious,
   });
 
   @override
   Widget build(BuildContext context) {
-    final change = data.volumeChange24h;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Stats header card
-        GlassCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: 16, color: color),
-                  const SizedBox(width: 8),
-                  Text(platform,
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white)),
-                  const Spacer(),
-                  if (change != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.brandAmber.withAlpha(20),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                          '${change >= 0 ? '+' : ''}${change.toStringAsFixed(0)}% vol',
-                          style: const TextStyle(
-                              fontSize: 9,
-                              color: AppColors.brandAmber,
-                              fontWeight: FontWeight.w700)),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  _SocialMetric(
-                    '${data.bullishPercent.toStringAsFixed(0)}%',
-                    'Bullish',
-                    AppColors.brandGreen,
-                  ),
-                  const SizedBox(width: 10),
-                  _SocialMetric(
-                    _formatMentions(data.totalMentions),
-                    'Mentions',
-                    AppColors.brandBlue,
-                  ),
-                  const SizedBox(width: 10),
-                  _SocialMetric(
-                    '${data.bearishPercent.toStringAsFixed(0)}%',
-                    'Bearish',
-                    AppColors.brandRed,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              // Sentiment bar
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: data.bullishPercent.round().clamp(1, 100),
-                      child: Container(height: 6, color: AppColors.brandGreen),
-                    ),
-                    Expanded(
-                      flex: data.neutralPercent.round().clamp(1, 100),
-                      child: Container(height: 6, color: AppColors.brandAmber),
-                    ),
-                    Expanded(
-                      flex: data.bearishPercent.round().clamp(1, 100),
-                      child: Container(height: 6, color: AppColors.brandRed),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Posts
-        if (data.posts.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          ...data.posts.take(5).map((p) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _SocialPostCard(post: p, platformColor: color),
-              )),
-        ],
-      ],
-    );
-  }
-
-  String _formatMentions(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return '$n';
-  }
-}
-
-class _SocialMetric extends StatelessWidget {
-  final String value, label;
-  final Color color;
-  const _SocialMetric(this.value, this.label, this.color);
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: color.withAlpha(10),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withAlpha(25)),
-        ),
-        child: Column(
-          children: [
-            Text(value,
-                style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                    fontFamily: 'JetBrainsMono')),
-            Text(label,
-                style:
-                    const TextStyle(fontSize: 9, color: AppColors.textMuted)),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.borderSubtle)),
       ),
-    );
-  }
-}
-
-class _SocialPostCard extends StatelessWidget {
-  final SocialPost post;
-  final Color platformColor;
-  const _SocialPostCard({required this.post, required this.platformColor});
-
-  String _timeAgo(DateTime? dt) {
-    if (dt == null) return '';
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final sentiment = post.sentiment ?? 'neutral';
-    final sentColor = sentiment == 'bullish'
-        ? AppColors.brandGreen
-        : sentiment == 'bearish'
-            ? AppColors.brandRed
-            : AppColors.brandAmber;
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 13,
-                backgroundColor: platformColor.withAlpha(20),
-                child: Text(
-                  post.author.isNotEmpty ? post.author[0].toUpperCase() : '?',
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: platformColor),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  post.subreddit != null
-                      ? 'r/${post.subreddit} · @${post.author}'
-                      : '@${post.author}',
-                  style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(_timeAgo(post.publishedAt),
-                  style: const TextStyle(
-                      fontSize: 10, color: AppColors.textDisabled)),
-            ],
+          _PageButton(
+            label: 'Previous',
+            icon: Icons.chevron_left_rounded,
+            iconLeading: true,
+            enabled: hasPrevious && !isLoading,
+            onTap: onPrevious,
           ),
-          const SizedBox(height: 8),
-          Text(post.content,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textMuted, height: 1.5),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis),
-          if (post.likes != null || post.comments != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                if (post.likes != null) ...[
-                  const Icon(Icons.favorite_outline_rounded,
-                      size: 12, color: AppColors.textMuted),
-                  const SizedBox(width: 4),
-                  Text('${post.likes}',
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.textMuted)),
-                  const SizedBox(width: 12),
-                ],
-                if (post.comments != null) ...[
-                  const Icon(Icons.chat_bubble_outline_rounded,
-                      size: 12, color: AppColors.textMuted),
-                  const SizedBox(width: 4),
-                  Text('${post.comments}',
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.textMuted)),
-                ],
-                const Spacer(),
-                _SentimentBadge(label: sentiment, color: sentColor),
-              ],
+          const Spacer(),
+          Text(
+            totalPages != null ? 'Page $page of $totalPages' : 'Page $page',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textMuted,
             ),
-          ],
+          ),
+          const Spacer(),
+          _PageButton(
+            label: 'Next',
+            icon: Icons.chevron_right_rounded,
+            iconLeading: false,
+            enabled: hasNext && !isLoading,
+            onTap: onNext,
+          ),
         ],
       ),
     );
   }
 }
 
+class _PageButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool iconLeading;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _PageButton({
+    required this.label,
+    required this.icon,
+    required this.iconLeading,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = enabled ? Colors.white : AppColors.textMuted;
+    final children = [
+      Icon(icon, size: 16, color: color),
+      const SizedBox(width: 4),
+      Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    ];
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.bgCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: enabled
+                ? AppColors.borderSubtle
+                : AppColors.borderSubtle.withAlpha(60),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: iconLeading ? children : children.reversed.toList(),
+        ),
+      ),
+    );
+  }
+}
 // ── Coin Signals Tab ──────────────────────────────────────────────────────────
 
 class _CoinSignalsTab extends ConsumerWidget {
   const _CoinSignalsTab();
 
-  static const _presets = [
-    ('bitcoin', 'BTC'),
-    ('ethereum', 'ETH'),
-    ('solana', 'SOL'),
-    ('binancecoin', 'BNB'),
-    ('ripple', 'XRP'),
-  ];
+  void _openPicker(BuildContext context, WidgetRef ref, String selectedId) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'coin-picker',
+      barrierColor: Colors.black.withOpacity(0.75),
+      transitionDuration: const Duration(milliseconds: 180),
+      transitionBuilder: (_, anim, __, child) => FadeTransition(
+        opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+        child: SlideTransition(
+          position: Tween<Offset>(
+                  begin: const Offset(0, -0.04), end: Offset.zero)
+              .animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
+          child: child,
+        ),
+      ),
+      pageBuilder: (ctx, _, __) => _CoinPickerDialog(
+        selectedId: selectedId,
+        onSelected: (id) {
+          Navigator.of(ctx).pop();
+          ref.read(sentimentCoinIdProvider.notifier).state = id;
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -892,45 +463,48 @@ class _CoinSignalsTab extends ConsumerWidget {
 
     return Column(
       children: [
-        // Coin picker
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
+        // Coin search / picker
+        Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-          child: Row(
-            children: _presets.map((preset) {
-              final (id, sym) = preset;
-              final active = selectedId == id;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: () =>
-                      ref.read(sentimentCoinIdProvider.notifier).state = id,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: active
-                          ? AppColors.brandGreen.withAlpha(25)
-                          : AppColors.bgCard,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: active
-                            ? AppColors.brandGreen.withAlpha(80)
-                            : AppColors.borderSubtle,
-                      ),
+          child: GestureDetector(
+            onTap: () => _openPicker(context, ref, selectedId),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.bgCard,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.borderSubtle),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.search_rounded,
+                      size: 16, color: AppColors.textMuted),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Search coin by name or symbol...',
+                      style:
+                          TextStyle(fontSize: 13, color: AppColors.textMuted),
                     ),
-                    child: Text(sym,
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: active
-                                ? AppColors.brandGreen
-                                : AppColors.textMuted)),
                   ),
-                ),
-              );
-            }).toList(),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.brandGreen.withAlpha(20),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      selectedId.toUpperCase(),
+                      style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.brandGreen),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -977,6 +551,271 @@ class _CoinSignalsTab extends ConsumerWidget {
   }
 }
 
+// ── Coin Picker Dialog ────────────────────────────────────────────────────────
+
+class _CoinPickerDialog extends ConsumerStatefulWidget {
+  final String selectedId;
+  final ValueChanged<String> onSelected;
+  const _CoinPickerDialog({required this.selectedId, required this.onSelected});
+
+  @override
+  ConsumerState<_CoinPickerDialog> createState() => _CoinPickerDialogState();
+}
+
+class _CoinPickerDialogState extends ConsumerState<_CoinPickerDialog> {
+  final _ctrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: EdgeInsets.only(
+          top: MediaQuery.of(context).size.height * 0.06,
+          left: 16,
+          right: 16,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 480, maxHeight: 520),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F1117),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.borderSubtle),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.5),
+                  blurRadius: 40,
+                  offset: const Offset(0, 20),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Search field
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.search_rounded,
+                          size: 18, color: AppColors.textMuted),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _ctrl,
+                          autofocus: true,
+                          style: const TextStyle(
+                              fontSize: 14, color: Colors.white),
+                          onChanged: (v) => setState(() => _query = v),
+                          decoration: const InputDecoration(
+                            hintText: 'Search coin by name or symbol...',
+                            hintStyle: TextStyle(
+                                color: AppColors.textDisabled, fontSize: 14),
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgTertiary,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: const Text('ESC',
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  color: AppColors.textMuted,
+                                  fontFamily: 'JetBrainsMono')),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(color: AppColors.borderSubtle, height: 1),
+                // Coin list
+                Flexible(
+                  child: Consumer(
+                    builder: (ctx, ref, _) {
+                      final coinsAsync = ref.watch(coinSearchProvider(_query));
+                      return coinsAsync.when(
+                        loading: () => const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppColors.brandGreen),
+                          ),
+                        ),
+                        error: (_, __) => const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text('Error loading coins',
+                              style: TextStyle(
+                                  fontSize: 13, color: AppColors.brandRed)),
+                        ),
+                        data: (coins) {
+                          if (coins.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Text('No coins found',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textMuted)),
+                            );
+                          }
+                          return ListView.builder(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            itemCount: coins.length,
+                            itemBuilder: (_, i) {
+                              final coin = coins[i];
+                              final isSelected = coin.id == widget.selectedId;
+                              return GestureDetector(
+                                onTap: () => widget.onSelected(coin.id),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 10),
+                                  color: isSelected
+                                      ? AppColors.brandGreen.withAlpha(8)
+                                      : Colors.transparent,
+                                  child: Row(
+                                    children: [
+                                      _CoinAvatar(
+                                          symbol: coin.symbol,
+                                          imageUrl: coin.imageUrl),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(coin.symbol,
+                                                style: const TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.white)),
+                                            Text(coin.name,
+                                                style: const TextStyle(
+                                                    fontSize: 10,
+                                                    color:
+                                                        AppColors.textMuted)),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 90,
+                                        child: Text(
+                                          coin.formattedPrice,
+                                          textAlign: TextAlign.right,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                              fontFamily: 'JetBrainsMono'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      SizedBox(
+                                        width: 60,
+                                        child: Text(
+                                          '${coin.priceChange24h >= 0 ? '+' : ''}${coin.priceChange24h.toStringAsFixed(2)}%',
+                                          textAlign: TextAlign.right,
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: coin.priceChange24h >= 0
+                                                  ? AppColors.brandGreen
+                                                  : AppColors.brandRed,
+                                              fontFamily: 'JetBrainsMono'),
+                                        ),
+                                      ),
+                                      if (isSelected) ...[
+                                        const SizedBox(width: 8),
+                                        const Icon(Icons.check_rounded,
+                                            size: 14,
+                                            color: AppColors.brandGreen),
+                                      ] else
+                                        const SizedBox(width: 22),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CoinAvatar extends StatelessWidget {
+  final String symbol;
+  final String? imageUrl;
+  const _CoinAvatar({required this.symbol, this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          imageUrl!,
+          width: 34,
+          height: 34,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _fallback(),
+        ),
+      );
+    }
+    return _fallback();
+  }
+
+  Widget _fallback() {
+    final colors = [
+      AppColors.brandGreen,
+      AppColors.brandBlue,
+      AppColors.brandAmber,
+      AppColors.brandPurple,
+      AppColors.brandRed,
+    ];
+    final color = colors[symbol.codeUnitAt(0) % colors.length];
+    return Container(
+      width: 34,
+      height: 34,
+      decoration:
+          BoxDecoration(color: color.withAlpha(25), shape: BoxShape.circle),
+      child: Center(
+        child: Text(
+          symbol.isNotEmpty ? symbol[0] : '?',
+          style: TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w800, color: color),
+        ),
+      ),
+    );
+  }
+}
+
 class _CoinOverallCard extends StatelessWidget {
   final CoinSentimentData data;
   const _CoinOverallCard({required this.data});
@@ -1002,12 +841,18 @@ class _CoinOverallCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      data.symbol.isNotEmpty ? '${data.symbol}/USDT' : data.coinId,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
+                      data.symbol.isNotEmpty
+                          ? '${data.symbol}/USDT'
+                          : data.coinId,
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white),
                     ),
                     const SizedBox(height: 4),
                     const Text('Overall Sentiment',
-                        style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                        style: TextStyle(
+                            fontSize: 11, color: AppColors.textMuted)),
                   ],
                 ),
               ),
@@ -1017,8 +862,10 @@ class _CoinOverallCard extends StatelessWidget {
                   Text(
                     data.overallScore.toStringAsFixed(0),
                     style: TextStyle(
-                        fontSize: 32, fontWeight: FontWeight.w900,
-                        color: color, fontFamily: 'JetBrainsMono'),
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        color: color,
+                        fontFamily: 'JetBrainsMono'),
                   ),
                   _SentimentBadge(label: data.overallSentiment, color: color),
                 ],
@@ -1033,17 +880,22 @@ class _CoinOverallCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 24, height: 24,
+                  width: 24,
+                  height: 24,
                   decoration: BoxDecoration(
                     color: AppColors.brandAmber.withAlpha(20),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Icon(Icons.psychology_rounded, size: 13, color: AppColors.brandAmber),
+                  child: const Icon(Icons.psychology_rounded,
+                      size: 13, color: AppColors.brandAmber),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(data.aiSummary!,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted, height: 1.5)),
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                          height: 1.5)),
                 ),
               ],
             ),
@@ -1145,283 +997,6 @@ class _SignalRow extends StatelessWidget {
 
   String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
-}
-
-// ── On-Chain Tab ──────────────────────────────────────────────────────────────
-
-class _OnChainTab extends ConsumerWidget {
-  const _OnChainTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final data = ref.watch(onChainSentimentProvider);
-    return data.when(
-      loading: () => const _LoadingView(),
-      error: (e, _) => _ErrorView(
-        message: e.toString(),
-        onRetry: () => ref.invalidate(onChainSentimentProvider),
-      ),
-      data: (d) => RefreshIndicator(
-        color: AppColors.brandGreen,
-        backgroundColor: AppColors.bgSecondary,
-        onRefresh: () async => ref.invalidate(onChainSentimentProvider),
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            if (d.flows != null) ...[
-              _ExchangeFlowsCard(flows: d.flows!),
-              const SizedBox(height: 16),
-            ],
-            if (d.aiSummary != null && d.aiSummary!.isNotEmpty) ...[
-              _AiSummaryCard(text: d.aiSummary!),
-              const SizedBox(height: 16),
-            ],
-            if (d.indicators.isNotEmpty)
-              _IndicatorsCard(indicators: d.indicators),
-            if (d.flows == null && d.indicators.isEmpty && d.aiSummary == null)
-              const _EmptyView(message: 'No on-chain data available'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ExchangeFlowsCard extends StatelessWidget {
-  final ExchangeFlows flows;
-  const _ExchangeFlowsCard({required this.flows});
-
-  @override
-  Widget build(BuildContext context) {
-    final netPositive = flows.netFlow >= 0;
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Exchange Flows',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white)),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _FlowMetric(
-                'Inflow',
-                _formatFlow(flows.inflow),
-                AppColors.brandRed,
-                Icons.arrow_downward_rounded,
-              ),
-              const SizedBox(width: 10),
-              _FlowMetric(
-                'Outflow',
-                _formatFlow(flows.outflow),
-                AppColors.brandGreen,
-                Icons.arrow_upward_rounded,
-              ),
-              const SizedBox(width: 10),
-              _FlowMetric(
-                'Net Flow',
-                '${netPositive ? '+' : ''}${_formatFlow(flows.netFlow)}',
-                netPositive ? AppColors.brandRed : AppColors.brandGreen,
-                netPositive ? Icons.warning_rounded : Icons.trending_up_rounded,
-              ),
-            ],
-          ),
-          if (flows.reserve != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Text('Exchange Reserve',
-                    style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                const Spacer(),
-                Text(_formatFlow(flows.reserve!),
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        fontFamily: 'JetBrainsMono')),
-              ],
-            ),
-          ],
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: (netPositive ? AppColors.brandRed : AppColors.brandGreen)
-                  .withAlpha(10),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                  color:
-                      (netPositive ? AppColors.brandRed : AppColors.brandGreen)
-                          .withAlpha(25)),
-            ),
-            child: Text(
-              netPositive
-                  ? 'Net inflow to exchanges — potential sell pressure. Monitor support levels.'
-                  : 'Net outflow from exchanges — coins moving to cold storage. Bullish signal.',
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textMuted, height: 1.4),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatFlow(double v) {
-    final abs = v.abs();
-    if (abs >= 1000000) return '${(v / 1000000).toStringAsFixed(2)}M';
-    if (abs >= 1000) return '${(v / 1000).toStringAsFixed(1)}K';
-    return v.toStringAsFixed(0);
-  }
-}
-
-class _FlowMetric extends StatelessWidget {
-  final String label, value;
-  final Color color;
-  final IconData icon;
-  const _FlowMetric(this.label, this.value, this.color, this.icon);
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: color.withAlpha(10),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withAlpha(25)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(height: 4),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                    fontFamily: 'JetBrainsMono'),
-                textAlign: TextAlign.center),
-            Text(label,
-                style: const TextStyle(fontSize: 9, color: AppColors.textMuted),
-                textAlign: TextAlign.center),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AiSummaryCard extends StatelessWidget {
-  final String text;
-  const _AiSummaryCard({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      borderColor: AppColors.brandAmber.withAlpha(40),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: AppColors.brandAmber.withAlpha(20),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.psychology_rounded,
-                size: 14, color: AppColors.brandAmber),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(text,
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textMuted, height: 1.5)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _IndicatorsCard extends StatelessWidget {
-  final List<OnChainIndicator> indicators;
-  const _IndicatorsCard({required this.indicators});
-
-  Color _signalColor(String s) {
-    final lower = s.toLowerCase();
-    if (lower.contains('bull') ||
-        lower.contains('safe') ||
-        lower.contains('profit') ||
-        lower.contains('good') ||
-        lower.contains('opportun')) {
-      return AppColors.brandGreen;
-    }
-    if (lower.contains('bear') ||
-        lower.contains('risk') ||
-        lower.contains('danger') ||
-        lower.contains('loss')) {
-      return AppColors.brandRed;
-    }
-    return AppColors.brandAmber;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('On-Chain Indicators',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white)),
-          const SizedBox(height: 14),
-          ...indicators.map((m) {
-            final color = _signalColor(m.signal);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(m.name,
-                          style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white)),
-                      const Spacer(),
-                      Text(m.value,
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: color,
-                              fontFamily: 'JetBrainsMono')),
-                      const SizedBox(width: 8),
-                      _SentimentBadge(label: m.signal, color: color),
-                    ],
-                  ),
-                  if (m.description.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(m.description,
-                        style: const TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textMuted,
-                            height: 1.4)),
-                  ],
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
 }
 
 // ── Shared helpers ────────────────────────────────────────────────────────────

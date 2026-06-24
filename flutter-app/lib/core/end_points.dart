@@ -89,6 +89,10 @@ class EndPoints {
   // On-chain / Sentiment (NEW — backend to build)
   // ─────────────────────────────────────────────────────────────
   static const String sentimentNews = '$baseUrl/api/sentiment/news';
+  static String sentimentNewsWithParams({int page = 1, int limit = 20}) =>
+      Uri.parse('$baseUrl/api/sentiment/news')
+          .replace(queryParameters: {'page': '$page', 'limit': '$limit'})
+          .toString();
   static const String sentimentSocial = '$baseUrl/api/sentiment/social';
   static String sentimentCoin(String coinId) =>
       '$baseUrl/api/sentiment/coins/$coinId';
