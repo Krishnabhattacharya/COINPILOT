@@ -71,6 +71,24 @@
     window.addEventListener('flutter-first-frame', function () {
       document.getElementById('loading').remove();
     });
+
+    // Fix: black screen after Chrome is minimized and reopened on mobile.
+    // The OS reclaims GPU memory when backgrounded, causing the WebGL context
+    // to be lost. On resume, check if the context is gone and reload if so;
+    // otherwise a resize event is enough to wake Flutter's renderer.
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState !== 'visible') return;
+      setTimeout(function () {
+        var canvas = document.querySelector('canvas');
+        if (!canvas) return;
+        var gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        if (gl && gl.isContextLost()) {
+          window.location.reload();
+        } else {
+          window.dispatchEvent(new Event('resize'));
+        }
+      }, 150);
+    });
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
