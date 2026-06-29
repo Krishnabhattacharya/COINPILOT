@@ -89,6 +89,7 @@ const features = [
 export default function Features() {
   const flutterBase =
     process.env.NEXT_PUBLIC_FLUTTER_DASHBOARD_URL ?? "http://localhost:8080";
+  const isProduction = !!process.env.NEXT_PUBLIC_FLUTTER_DASHBOARD_URL;
 
   return (
     <section id="features" className="py-24 relative overflow-hidden">
@@ -112,7 +113,9 @@ export default function Features() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {features.map((feature, i) => {
             const Icon = feature.icon;
-            const href = `${flutterBase}${feature.route}`;
+            const href = isProduction
+              ? `/app${feature.route}`
+              : `${flutterBase}${feature.route}`;
             return (
               <a
                 key={i}
