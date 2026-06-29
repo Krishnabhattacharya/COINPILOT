@@ -36,6 +36,9 @@ class SignalData {
   final String reasoning;
   final bool futuresAvailable;
   final bool coinNotSupported;
+  // Raw metrics from the signal response — used as fallback for cards whose
+  // separate endpoints fail (long/short, liquidation wall, etc.)
+  final Map<String, dynamic> rawMetrics;
 
   const SignalData({
     required this.price,
@@ -49,6 +52,7 @@ class SignalData {
     required this.reasoning,
     this.futuresAvailable = true,
     this.coinNotSupported = false,
+    this.rawMetrics = const {},
   });
 
   String get verdictIcon {
@@ -98,6 +102,7 @@ class SignalData {
     } else {
       reasoningStr = reasoningRaw?.toString() ?? json['analysis']?.toString() ?? '';
     }
+    final metrics = json['metrics'] as Map<String, dynamic>? ?? {};
     return SignalData(
       price: (json['currentPrice'] ?? json['price'] as num?)?.toDouble() ?? 0,
       verdictLabel: label,
@@ -112,6 +117,7 @@ class SignalData {
           json['futures_available'] as bool? ?? true,
       coinNotSupported: json['coin_not_supported'] as bool? ??
           json['coinNotSupported'] as bool? ?? false,
+      rawMetrics: metrics,
     );
   }
 
@@ -191,10 +197,26 @@ class LongShortData {
 
   String get formattedRatio => ratio.toStringAsFixed(2);
 
-  factory LongShortData.fromJson(Map<String, dynamic> json) => LongShortData(
-    ratio: (json['ratio'] ?? json['longShortRatio'] as num?)?.toDouble() ?? 1.0,
-    label: json['label']?.toString() ?? json['sentiment']?.toString() ?? 'Balanced',
-  );
+  static String labelFromRatio(double ratio) {
+    if (ratio >= 2.5) return 'Crowded Longs';
+    if (ratio >= 1.5) return 'Long-Heavy';
+    if (ratio <= 0.4) return 'Crowded Shorts';
+    if (ratio <= 0.67) return 'Short-Heavy';
+    return 'Balanced';
+  }
+
+  factory LongShortData.fromJson(Map<String, dynamic> json) {
+    final ratio = (json['ratio'] ?? json['longShortRatio'] as num?)?.toDouble() ?? 1.0;
+    return LongShortData(
+      ratio: ratio,
+      label: json['label']?.toString() ?? json['sentiment']?.toString() ?? labelFromRatio(ratio),
+    );
+  }
+
+  factory LongShortData.fromMetrics(Map<String, dynamic> metrics) {
+    final ratio = (metrics['longShortRatio'] as num?)?.toDouble() ?? 1.0;
+    return LongShortData(ratio: ratio, label: labelFromRatio(ratio));
+  }
 
   static const empty = LongShortData(ratio: 1.0, label: 'Balanced');
 }
@@ -246,6 +268,19 @@ class LiquidationData {
       side = json['side']?.toString() ?? 'Below';
     }
     return LiquidationData(wallPrice: wallPrice, side: side);
+  }
+
+  // Signal metrics has liquidationWallBelow as a flat number, not an object.
+  factory LiquidationData.fromMetrics(Map<String, dynamic> metrics) {
+    final below = (metrics['liquidationWallBelow'] as num?)?.toDouble();
+    final above = (metrics['liquidationWallAbove'] as num?)?.toDouble();
+    if (below != null && below > 0) {
+      return LiquidationData(wallPrice: below, side: 'Below');
+    }
+    if (above != null && above > 0) {
+      return LiquidationData(wallPrice: above, side: 'Above');
+    }
+    return const LiquidationData(wallPrice: 0, side: 'Below', unavailable: true);
   }
 
   static const empty = LiquidationData(wallPrice: 0, side: 'Below');

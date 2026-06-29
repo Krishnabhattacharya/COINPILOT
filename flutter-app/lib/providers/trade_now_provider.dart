@@ -27,12 +27,26 @@ final tradeNowProvider =
     guard(_repo.fetchHistory(symbol), <HistoricalSetup>[]),
   ]);
 
+  final signal = results[0] as SignalData;
+  final metrics = signal.rawMetrics;
+
+  // Use signal metrics as fallback when separate endpoints fail or return defaults.
+  var longShort = results[3] as LongShortData;
+  if (longShort.ratio == 1.0 && longShort.label == 'Balanced' && metrics.isNotEmpty) {
+    longShort = LongShortData.fromMetrics(metrics);
+  }
+
+  var liquidations = results[4] as LiquidationData;
+  if (liquidations.unavailable && metrics.isNotEmpty) {
+    liquidations = LiquidationData.fromMetrics(metrics);
+  }
+
   return TradeNowData(
-    signal: results[0] as SignalData,
+    signal: signal,
     sentiment: results[1] as SentimentData,
     openInterest: results[2] as OpenInterestData,
-    longShort: results[3] as LongShortData,
-    liquidations: results[4] as LiquidationData,
+    longShort: longShort,
+    liquidations: liquidations,
     funding: results[5] as FundingRateInfo,
     history: results[6] as List<HistoricalSetup>,
   );
