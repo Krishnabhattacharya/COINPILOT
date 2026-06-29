@@ -10,8 +10,8 @@ const DASHBOARD_URL = process.env.NEXT_PUBLIC_FLUTTER_DASHBOARD_URL
   : `${FLUTTER_BASE}/dashboard`;
 
 const navLinks = [
-  { label: "Features",      href: "#features"       },
-  { label: "Market Memory", href: "#memory-engine"  },
+  { label: "Features",      href: "/#features"      },
+  { label: "Market Memory", href: "/#memory-engine" },
   { label: "Blog",          href: "/blog"           },
 ];
 
