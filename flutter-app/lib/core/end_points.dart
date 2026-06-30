@@ -10,7 +10,7 @@ class EndPoints {
 
   static const String baseUrl = _env == 'dev'
       ? 'http://10.255.251.45:5000'
-      : 'https://crypto-backend-4557.onrender.com';
+      : 'http://80.225.250.43:5000';
 
   static const String apiBaseUrl = '$baseUrl/api/v1';
   static const String dashboardBaseUrl = '$apiBaseUrl/dashboard';
