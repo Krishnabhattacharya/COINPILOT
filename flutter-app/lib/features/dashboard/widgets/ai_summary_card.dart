@@ -40,7 +40,7 @@ class AiSummaryCard extends ConsumerWidget {
                       color: AppColors.textMuted,
                       letterSpacing: 0.5)),
               const Spacer(),
-              NeonBadge(label: 'GPT-4', color: AppColors.brandPurple),
+              const NeonBadge(label: 'GPT-4', color: AppColors.brandPurple),
             ],
           ),
           const SizedBox(height: 16),
@@ -89,30 +89,40 @@ class AiSummaryCard extends ConsumerWidget {
           const SizedBox(height: 16),
           const Divider(color: AppColors.borderSubtle, height: 1),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              _SentimentChip('Bullish', 74, AppColors.brandGreen),
-              const SizedBox(width: 8),
-              _SentimentChip('Neutral', 18, AppColors.brandAmber),
-              const SizedBox(width: 8),
-              _SentimentChip('Bearish', 8, AppColors.brandRed),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {},
-                child: const Row(
-                  children: [
-                    Text('Ask AI',
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.brandGreen,
-                            fontWeight: FontWeight.w600)),
-                    SizedBox(width: 4),
-                    Icon(Icons.arrow_forward_rounded,
-                        size: 14, color: AppColors.brandGreen),
-                  ],
-                ),
-              ),
-            ],
+          Consumer(
+            builder: (_, ref, __) {
+              final sentiment = ref.watch(marketAiProvider).whenOrNull(
+                    data: (a) => a.analysis.sentimentBreakdown,
+                  );
+              final bullish = sentiment?.bullish ?? 74;
+              final neutral = sentiment?.neutral ?? 18;
+              final bearish = sentiment?.bearish ?? 8;
+              return Row(
+                children: [
+                  _SentimentChip('Bullish', bullish, AppColors.brandGreen),
+                  const SizedBox(width: 8),
+                  _SentimentChip('Neutral', neutral, AppColors.brandAmber),
+                  const SizedBox(width: 8),
+                  _SentimentChip('Bearish', bearish, AppColors.brandRed),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () {},
+                    child: const Row(
+                      children: [
+                        Text('Ask AI',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.brandGreen,
+                                fontWeight: FontWeight.w600)),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_rounded,
+                            size: 14, color: AppColors.brandGreen),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

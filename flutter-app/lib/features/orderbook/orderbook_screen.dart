@@ -9,6 +9,7 @@ import '../../core/remote/web_socket_baseclass.dart';
 import '../../providers/ai_analysis_provider.dart';
 import '../../providers/charts_provider.dart';
 import '../../providers/orderbook_provider.dart';
+import '../../providers/selected_coin_provider.dart';
 
 class OrderbookScreen extends ConsumerStatefulWidget {
   const OrderbookScreen({super.key});
@@ -18,8 +19,7 @@ class OrderbookScreen extends ConsumerStatefulWidget {
 }
 
 class _OrderbookScreenState extends ConsumerState<OrderbookScreen> {
-  String get _selectedCoin =>
-      ref.watch(aiAnalysisProvider.select((n) => n.selectedCoin));
+  String get _selectedCoin => ref.watch(selectedCoinProvider);
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +108,7 @@ class _OrderbookScreenState extends ConsumerState<OrderbookScreen> {
     return CoinSelector(
       selected: _selectedCoin,
       onChanged: (c) {
+        ref.read(selectedCoinProvider.notifier).state = c;
         ref.read(aiAnalysisProvider).selectCoin(c);
         ref.read(chartsProvider).setCoin(c);
         ref.read(orderBookProvider.notifier).selectCoin(c);

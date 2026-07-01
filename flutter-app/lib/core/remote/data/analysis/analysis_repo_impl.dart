@@ -7,8 +7,11 @@ class AnalysisRepoImpl implements AnalysisRepo {
   final _api = ApiClient.instance;
 
   @override
-  Future<AiAnalysis> fetchMarketAnalysis() =>
-      _api.fetchModel(EndPoints.marketAiAnalysis, AiAnalysis.fromJson);
+  Future<AiAnalysis> fetchMarketAnalysis() => _api.fetchModel(
+        EndPoints.analysisSignal,
+        AiAnalysis.fromSignalJson,
+        queryParams: {'symbol': 'BTCUSDT'},
+      );
 
   @override
   Future<AiAnalysis> fetchCoinAnalysis(String coinId) =>

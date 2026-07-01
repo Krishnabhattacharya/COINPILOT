@@ -8,23 +8,17 @@ import '../../core/widgets/coin_selector.dart';
 import '../../core/remote/data/trade_now/models/trade_now_models.dart';
 import '../../providers/trade_now_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/selected_coin_provider.dart';
 
 class TradeNowScreen extends ConsumerStatefulWidget {
-  final String? initialCoin;
-  const TradeNowScreen({super.key, this.initialCoin});
+  const TradeNowScreen({super.key});
 
   @override
   ConsumerState<TradeNowScreen> createState() => _TradeNowScreenState();
 }
 
 class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
-  late String _selectedCoin;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedCoin = widget.initialCoin?.toUpperCase() ?? 'BTC';
-  }
+  String get _selectedCoin => ref.watch(selectedCoinProvider);
 
   Color _verdictColor(VerdictType t) {
     switch (t) {
@@ -62,7 +56,8 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
                   const SizedBox(height: 16),
                   CoinSelector(
                     selected: _selectedCoin,
-                    onChanged: (c) => setState(() => _selectedCoin = c),
+                    onChanged: (c) =>
+                        ref.read(selectedCoinProvider.notifier).state = c,
                   ),
                   const SizedBox(height: 20),
                   async.when(

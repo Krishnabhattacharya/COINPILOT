@@ -11,6 +11,7 @@ import '../../providers/dashboard_provider.dart';
 import '../../providers/charts_provider.dart';
 import '../../providers/predictions_provider.dart';
 import '../../providers/ai_chat_provider.dart';
+import '../../providers/selected_coin_provider.dart';
 import '../../core/remote/data/predictions/models/predictions_models.dart';
 
 const _coins = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE'];
@@ -57,6 +58,20 @@ class _AiAnalysisScreenState extends ConsumerState<AiAnalysisScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Sync aiAnalysisProvider with global coin (global search + navigation)
+    final globalCoin = ref.watch(selectedCoinProvider);
+    final currentCoin = ref.read(aiAnalysisProvider).selectedCoin;
+    if (currentCoin != globalCoin) {
+      Future.microtask(() {
+        ref.read(aiAnalysisProvider).selectCoin(globalCoin);
+        ref.read(chartsProvider).setCoin(globalCoin);
+      });
+    }
+    ref.listen<String>(selectedCoinProvider, (_, coin) {
+      ref.read(aiAnalysisProvider).selectCoin(coin);
+      ref.read(chartsProvider).setCoin(coin);
+    });
+
     final screenWidth = MediaQuery.sizeOf(context).width;
     final showChatPanel = screenWidth >= 900;
     final wide = screenWidth >= (showChatPanel ? 1400 : 860);
@@ -107,6 +122,7 @@ class _AiAnalysisScreenState extends ConsumerState<AiAnalysisScreen> {
                         coins: _coins,
                         accuracyAsync: accuracyAsync,
                         onCoinChanged: (c) {
+                          ref.read(selectedCoinProvider.notifier).state = c;
                           ref.read(aiAnalysisProvider).selectCoin(c);
                           ref.read(chartsProvider).setCoin(c);
                           ref
@@ -167,7 +183,10 @@ class _AiAnalysisScreenState extends ConsumerState<AiAnalysisScreen> {
                                       keyLevels: a.analysis.keyLevels,
                                       currentPrice: displayPrice),
                                   _SentimentCard(
-                                      sentiment: a.analysis.sentimentBreakdown),
+                                      sentiment: a.analysis.sentimentBreakdown,
+                                      trendDirection: a.analysis.trendDirection,
+                                      confidenceScore: a.analysis.confidenceScore,
+                                      keyInsights: a.analysis.keyInsights),
                                 );
                               },
                             );
@@ -690,11 +709,42 @@ class _Level extends StatelessWidget {
 
 class _SentimentCard extends StatelessWidget {
   final SentimentBreakdown? sentiment;
-  const _SentimentCard({this.sentiment});
+  final String? trendDirection;
+  final int? confidenceScore;
+  final List<String>? keyInsights;
+
+  const _SentimentCard({
+    this.sentiment,
+    this.trendDirection,
+    this.confidenceScore,
+    this.keyInsights,
+  });
+
+  Color get _verdictColor {
+    final t = trendDirection?.toLowerCase() ?? '';
+    if (t.contains('bull') || t == 'buy' || t == 'long') {
+      return AppColors.brandGreen;
+    } else if (t.contains('bear') || t == 'sell' || t == 'short') {
+      return AppColors.brandRed;
+    }
+    return AppColors.brandAmber;
+  }
+
+  String get _verdictText {
+    if (trendDirection == null) return '—';
+    final trend = trendDirection!;
+    final conf = confidenceScore != null ? ' — $confidenceScore% confidence.' : '.';
+    final insight = keyInsights?.isNotEmpty == true ? ' ${keyInsights!.first}' : '';
+    return '${_capitalize(trend)} trend$conf$insight';
+  }
+
+  String _capitalize(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1).toLowerCase()}';
 
   @override
   Widget build(BuildContext context) {
     final s = sentiment;
+    final verdictColor = _verdictColor;
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -719,22 +769,19 @@ class _SentimentCard extends StatelessWidget {
           const Divider(color: AppColors.borderSubtle, height: 1),
           const SizedBox(height: 12),
           const Text('AI Verdict',
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.textMuted,
-              )),
+              style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.brandGreen.withAlpha(10),
+              color: verdictColor.withAlpha(10),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.brandGreen.withAlpha(25)),
+              border: Border.all(color: verdictColor.withAlpha(25)),
             ),
-            child: const Text(
-              'Strong bullish consensus. Market structure supports continuation if \$95K holds.',
-              style: TextStyle(
-                  fontSize: 11, color: AppColors.brandGreen, height: 1.5),
+            child: Text(
+              _verdictText,
+              style:
+                  TextStyle(fontSize: 11, color: verdictColor, height: 1.5),
             ),
           ),
         ],

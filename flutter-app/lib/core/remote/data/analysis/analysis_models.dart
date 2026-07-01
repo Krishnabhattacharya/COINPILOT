@@ -20,6 +20,87 @@ class AiAnalysis {
           json['analysis'] as Map<String, dynamic>? ?? {}),
     );
   }
+
+  factory AiAnalysis.fromSignalJson(Map<String, dynamic> json) {
+    final price = (json['currentPrice'] as num?)?.toDouble() ?? 0;
+    final pricePct = (json['priceChangePct24h'] as num?)?.toDouble() ?? 0;
+    final verdict = json['verdict']?.toString() ?? 'NEUTRAL';
+    final confidence = (json['confidence'] as num?)?.toInt() ?? 0;
+    final symbol = json['symbol']?.toString() ?? 'BTCUSDT';
+    final asset = symbol.replaceAll('USDT', '');
+
+    final indicators = json['indicators'] as Map<String, dynamic>? ?? {};
+    final rsi = (indicators['rsi'] as num?)?.toDouble() ?? 0;
+
+    final metrics = json['metrics'] as Map<String, dynamic>? ?? {};
+    final fundingRegime = metrics['fundingRegime']?.toString() ?? '';
+    final fundingRate = (metrics['fundingRatePct'] as num?)?.toDouble() ?? 0;
+    final lsRatio = (metrics['longShortRatio'] as num?)?.toDouble() ?? 1.0;
+    final sentimentScore = (metrics['sentimentScore'] as num?)?.toInt() ?? 50;
+
+    final tradeLevels = json['tradeLevels'] as Map<String, dynamic>? ?? {};
+    final entryZone = tradeLevels['entryZone'] as Map<String, dynamic>? ?? {};
+    final entryMin = (entryZone['min'] as num?)?.toDouble() ?? 0;
+    final tp = (tradeLevels['takeProfit'] as num?)?.toDouble() ?? 0;
+    final sl = (tradeLevels['stopLoss'] as num?)?.toDouble() ?? 0;
+
+    final reasoning =
+        (json['reasoning'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
+    final priceK = '\$${(price / 1000).toStringAsFixed(1)}K';
+    final sign = pricePct >= 0 ? '+' : '';
+    final rsiDesc = rsi > 70
+        ? 'overbought'
+        : rsi < 30
+            ? 'oversold'
+            : 'neutral zone';
+    final lsDesc = lsRatio > 2
+        ? 'crowded longs'
+        : lsRatio < 0.5
+            ? 'crowded shorts'
+            : 'balanced';
+    final summary = '$asset at $priceK ($sign${pricePct.toStringAsFixed(2)}%). '
+        'Signal: $verdict — $confidence% confidence. '
+        'RSI ${rsi.toStringAsFixed(1)} — $rsiDesc. '
+        'Funding $fundingRegime at ${fundingRate.toStringAsFixed(4)}%. '
+        'L/S ${lsRatio.toStringAsFixed(2)} — $lsDesc. '
+        '${reasoning.isNotEmpty ? reasoning.first : ''}';
+
+    final bullish = sentimentScore.clamp(0, 100);
+    final bearish = ((100 - sentimentScore) * 0.6).round().clamp(0, 100);
+    final neutral = (100 - bullish - bearish).clamp(0, 100);
+
+    return AiAnalysis(
+      type: 'signal',
+      model: 'AI Signal',
+      currentPriceUsd: price,
+      analysis: AnalysisData(
+        asset: asset,
+        trendDirection: verdict,
+        summary: summary,
+        currentPriceUsd: price,
+        keyLevels: KeyLevels(
+          support: entryMin > 0
+              ? [Level(label: 'Entry', price: entryMin, reason: 'Entry zone')]
+              : [],
+          resistance: tp > 0
+              ? [Level(label: 'TP', price: tp, reason: 'Take profit')]
+              : [],
+        ),
+        riskFactors: sl > 0
+            ? ['\$${sl.toStringAsFixed(0)} stop loss', ...reasoning]
+            : reasoning,
+        confidenceScore: confidence,
+        sentimentBreakdown: SentimentBreakdown(
+          bullish: bullish,
+          neutral: neutral,
+          bearish: bearish,
+        ),
+        volatilityAnalysis: '',
+        keyInsights: reasoning,
+      ),
+    );
+  }
 }
 
 class AnalysisData {
