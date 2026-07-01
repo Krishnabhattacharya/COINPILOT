@@ -9,6 +9,7 @@ import '../../core/widgets/coin_selector.dart';
 import '../../providers/charts_provider.dart';
 import '../../providers/ai_analysis_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/selected_coin_provider.dart';
 
 const _timeframes = ['1m', '5m', '15m', '1H', '4H', '1D', '1W'];
 const _indicators = ['RSI', 'MACD', 'EMA', 'Volume', 'Bollinger'];
@@ -19,6 +20,16 @@ class ChartsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final n = ref.watch(chartsProvider);
+
+    // Sync chartsProvider with global coin (handles global search + first build after navigation)
+    final globalCoin = ref.watch(selectedCoinProvider);
+    if (n.selectedCoin != globalCoin) {
+      Future.microtask(() => ref.read(chartsProvider).setCoin(globalCoin));
+    }
+    ref.listen<String>(selectedCoinProvider, (_, coin) {
+      ref.read(chartsProvider).setCoin(coin);
+      ref.read(aiAnalysisProvider).selectCoin(coin);
+    });
 
     // Fullscreen Layout takes over the entire screen area
     if (n.isFullscreen) {
@@ -133,10 +144,7 @@ class _ChartHeader extends ConsumerWidget {
       final isMobile = c.maxWidth < 700;
       final coinSelector = CoinSelector(
         selected: n.selectedCoin,
-        onChanged: (coin) {
-          ref.read(chartsProvider).setCoin(coin);
-          ref.read(aiAnalysisProvider).selectCoin(coin);
-        },
+        onChanged: (coin) => ref.read(selectedCoinProvider.notifier).state = coin,
       );
       final priceWidget = livePrice != null
           ? Container(

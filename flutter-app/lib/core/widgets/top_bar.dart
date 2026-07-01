@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import '../theme/app_colors.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/selected_coin_provider.dart';
 import '../remote/web_socket_baseclass.dart';
 
 class TopBar extends StatelessWidget {
@@ -317,7 +318,8 @@ class _SearchDialogState extends ConsumerState<_SearchDialog> {
 
   void _goToCoin(String symbol) {
     Navigator.of(context).pop();
-    context.go('/trade-now?coin=$symbol');
+    ref.read(selectedCoinProvider.notifier).state = symbol.toUpperCase();
+    context.go('/trade-now');
   }
 
   @override

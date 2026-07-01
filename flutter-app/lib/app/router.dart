@@ -115,12 +115,7 @@ final router = GoRouter(
       builder: (context, state, child) => AppShell(child: child),
       routes: [
         GoRoute(path: '/dashboard', builder: (c, s) => const DashboardScreen()),
-        GoRoute(
-          path: '/trade-now',
-          builder: (c, s) => TradeNowScreen(
-            initialCoin: s.uri.queryParameters['coin'],
-          ),
-        ),
+        GoRoute(path: '/trade-now', builder: (c, s) => const TradeNowScreen()),
         GoRoute(path: '/analysis', builder: (c, s) => const AiAnalysisScreen()),
         GoRoute(path: '/charts', builder: (c, s) => const ChartsScreen()),
         GoRoute(path: '/memory', builder: (c, s) => const MarketMemoryScreen()),
