@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/widgets/glass_card.dart';
 import '../../providers/market_memory_provider.dart';
+import '../../providers/dashboard_provider.dart';
+import '../../providers/selected_coin_provider.dart';
 
 class MarketMemoryScreen extends ConsumerStatefulWidget {
   const MarketMemoryScreen({super.key});
@@ -14,6 +16,7 @@ class MarketMemoryScreen extends ConsumerStatefulWidget {
 class _MarketMemoryScreenState extends ConsumerState<MarketMemoryScreen> {
   final _searchCtrl = TextEditingController();
   bool _searching = false;
+  String _query = '';
 
   @override
   void dispose() {
@@ -21,16 +24,28 @@ class _MarketMemoryScreenState extends ConsumerState<MarketMemoryScreen> {
     super.dispose();
   }
 
-  void _applySearch(String raw) {
-    final cleaned = raw.trim().toUpperCase();
-    if (cleaned.isNotEmpty) {
-      ref.read(memorySymbolProvider.notifier).state = cleaned;
+  void _selectCoin(String symbol) {
+    final upper = symbol.trim().toUpperCase();
+    if (upper.isNotEmpty) {
+      ref.read(memorySymbolProvider.notifier).state = upper;
     }
-    setState(() => _searching = false);
+    setState(() {
+      _searching = false;
+      _query = '';
+      _searchCtrl.clear();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Sync with global search selection
+    final globalCoin = ref.watch(selectedCoinProvider);
+    final currentMemoryCoin = ref.read(memorySymbolProvider);
+    if (currentMemoryCoin != globalCoin) {
+      Future.microtask(
+          () => ref.read(memorySymbolProvider.notifier).state = globalCoin);
+    }
+
     final symbol = ref.watch(memorySymbolProvider);
 
     return Scaffold(
@@ -67,16 +82,7 @@ class _MarketMemoryScreenState extends ConsumerState<MarketMemoryScreen> {
   }
 
   Widget _buildSearchField(String currentSymbol) {
-    const quickCoins = [
-      'BTC',
-      'ETH',
-      'SOL',
-      'BNB',
-      'XRP',
-      'ADA',
-      'AVAX',
-      'DOGE'
-    ];
+    const quickCoins = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'AVAX', 'DOGE'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -103,78 +109,177 @@ class _MarketMemoryScreenState extends ConsumerState<MarketMemoryScreen> {
                       fontFamily: 'JetBrainsMono'),
                   textCapitalization: TextCapitalization.characters,
                   decoration: const InputDecoration(
-                    hintText: 'Enter coin symbol (e.g. LINK, DOT...)',
+                    hintText: 'Search any coin...',
                     hintStyle:
                         TextStyle(color: AppColors.textDisabled, fontSize: 13),
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(vertical: 12),
                   ),
-                  onSubmitted: _applySearch,
+                  onChanged: (v) => setState(() => _query = v.trim()),
+                  onSubmitted: _selectCoin,
                 ),
               ),
-              GestureDetector(
-                onTap: () {
-                  _applySearch(_searchCtrl.text);
-                  _searchCtrl.clear();
-                },
-                child: Container(
-                  margin: const EdgeInsets.all(6),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.brandPurple.withAlpha(40),
-                    borderRadius: BorderRadius.circular(8),
+              if (_query.isNotEmpty)
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _query = '';
+                    _searchCtrl.clear();
+                  }),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Icon(Icons.close_rounded,
+                        size: 16, color: AppColors.textMuted),
                   ),
-                  child: const Text('Go',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.brandPurple,
-                      )),
                 ),
-              ),
             ],
           ),
         ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: quickCoins.map((coin) {
-            final isSelected = coin == currentSymbol;
-            return GestureDetector(
-              onTap: () {
-                ref.read(memorySymbolProvider.notifier).state = coin;
-                setState(() => _searching = false);
-              },
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.brandPurple.withAlpha(40)
-                      : AppColors.bgTertiary,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
+        const SizedBox(height: 8),
+        if (_query.length >= 2)
+          _MemoryCoinSearchResults(query: _query, onTap: _selectCoin)
+        else
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: quickCoins.map((coin) {
+              final isSelected = coin == currentSymbol;
+              return GestureDetector(
+                onTap: () => _selectCoin(coin),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.brandPurple.withAlpha(80)
-                        : AppColors.borderSubtle,
+                        ? AppColors.brandPurple.withAlpha(40)
+                        : AppColors.bgTertiary,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColors.brandPurple.withAlpha(80)
+                          : AppColors.borderSubtle,
+                    ),
+                  ),
+                  child: Text(coin,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected
+                            ? AppColors.brandPurple
+                            : AppColors.textMuted,
+                      )),
+                ),
+              );
+            }).toList(),
+          ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// API-powered coin search results for Market Memory
+// ─────────────────────────────────────────────────────────────
+
+class _MemoryCoinSearchResults extends ConsumerWidget {
+  final String query;
+  final void Function(String symbol) onTap;
+  const _MemoryCoinSearchResults({required this.query, required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(coinSearchProvider(query));
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+                color: AppColors.brandPurple, strokeWidth: 2),
+          ),
+        ),
+      ),
+      error: (_, __) => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Text('Could not load coins',
+            style: TextStyle(fontSize: 12, color: AppColors.brandRed)),
+      ),
+      data: (coins) {
+        if (coins.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text('No coins found',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          );
+        }
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.bgCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.borderSubtle),
+          ),
+          child: Column(
+            children: coins.take(8).map((coin) {
+              final changeColor =
+                  coin.positive ? AppColors.brandGreen : AppColors.brandRed;
+              return GestureDetector(
+                onTap: () => onTap(coin.symbol),
+                child: Container(
+                  color: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: AppColors.brandPurple.withAlpha(20),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Center(
+                          child: Text(
+                            coin.symbol.isNotEmpty ? coin.symbol[0] : '?',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.brandPurple),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(coin.symbol,
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white)),
+                            Text(coin.name,
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textMuted)),
+                          ],
+                        ),
+                      ),
+                      Text(coin.formattedChange,
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: changeColor,
+                              fontFamily: 'JetBrainsMono')),
+                    ],
                   ),
                 ),
-                child: Text(coin,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: isSelected
-                          ? AppColors.brandPurple
-                          : AppColors.textMuted,
-                    )),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 }

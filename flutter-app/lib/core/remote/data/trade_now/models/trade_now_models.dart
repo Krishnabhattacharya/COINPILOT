@@ -64,6 +64,18 @@ class SignalData {
     }
   }
 
+  // Maps "BUY"→"LONG" and "SELL"→"SHORT" so futures users aren't confused.
+  String get displayVerdictLabel {
+    final upper = verdictLabel.toUpperCase();
+    if (upper.contains('BUY')) {
+      return verdictLabel.replaceAll(RegExp(r'BUY', caseSensitive: false), 'LONG');
+    }
+    if (upper.contains('SELL')) {
+      return verdictLabel.replaceAll(RegExp(r'SELL', caseSensitive: false), 'SHORT');
+    }
+    return verdictLabel;
+  }
+
   String get formattedPrice {
     if (price >= 1000) {
       return '\$${price.toStringAsFixed(0).replaceAllMapped(

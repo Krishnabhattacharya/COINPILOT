@@ -246,6 +246,171 @@ class KlineUpdate {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// OiCandle  (coin:history → oiHistory[])
+// ─────────────────────────────────────────────────────────────────────────────
+
+class OiCandle {
+  final DateTime time;
+  final double openInterest;
+  final double openInterestValue;
+
+  const OiCandle({
+    required this.time,
+    required this.openInterest,
+    required this.openInterestValue,
+  });
+
+  factory OiCandle.fromJson(Map<String, dynamic> j) {
+    final tsRaw = j['timestamp'] as num?;
+    final ts = tsRaw != null
+        ? DateTime.fromMillisecondsSinceEpoch(tsRaw.toInt())
+        : DateTime.now();
+    return OiCandle(
+      time: ts,
+      openInterest:
+          double.tryParse(j['sumOpenInterest']?.toString() ?? '') ?? 0,
+      openInterestValue:
+          double.tryParse(j['sumOpenInterestValue']?.toString() ?? '') ?? 0,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CoinHistoryData  (coin:history response)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class CoinHistoryData {
+  final String symbol;
+  final double fundingRate;
+  final List<OiCandle> oiHistory;
+
+  const CoinHistoryData({
+    required this.symbol,
+    required this.fundingRate,
+    required this.oiHistory,
+  });
+
+  bool get fundingPositive => fundingRate >= 0;
+
+  String get formattedFunding =>
+      '${fundingPositive ? '+' : ''}${(fundingRate * 100).toStringAsFixed(4)}%';
+
+  String get fundingLevel {
+    final abs = fundingRate.abs();
+    if (abs > 0.001) return 'Very High';
+    if (abs > 0.0004) return 'High';
+    if (abs > 0.0002) return 'Elevated';
+    if (abs > 0.0001) return 'Moderate';
+    return 'Neutral';
+  }
+
+  factory CoinHistoryData.fromJson(Map<String, dynamic> j) => CoinHistoryData(
+        symbol: j['symbol']?.toString() ?? '',
+        fundingRate:
+            double.tryParse(j['fundingRate']?.toString() ?? '') ?? 0,
+        oiHistory: (j['oiHistory'] as List?)
+                ?.whereType<Map>()
+                .map((e) => OiCandle.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [],
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LiquidationEvent  (coin:liquidations → recentEvents[])
+// ─────────────────────────────────────────────────────────────────────────────
+
+class LiquidationEvent {
+  final String symbol;
+  final double price;
+  final double quantity;
+  final String side;
+  final DateTime time;
+
+  const LiquidationEvent({
+    required this.symbol,
+    required this.price,
+    required this.quantity,
+    required this.side,
+    required this.time,
+  });
+
+  bool get isLongLiq => side.toUpperCase() == 'SELL';
+
+  String get formattedPrice {
+    if (price >= 1000) return '\$${price.toStringAsFixed(0)}';
+    if (price >= 1) return '\$${price.toStringAsFixed(3)}';
+    return '\$${price.toStringAsFixed(5)}';
+  }
+
+  factory LiquidationEvent.fromJson(Map<String, dynamic> j) {
+    final tsRaw = j['time'] ?? j['T'] ?? j['timestamp'];
+    DateTime ts;
+    if (tsRaw is num) {
+      ts = tsRaw > 1e12
+          ? DateTime.fromMillisecondsSinceEpoch(tsRaw.toInt())
+          : DateTime.fromMillisecondsSinceEpoch(tsRaw.toInt() * 1000);
+    } else {
+      ts = DateTime.now();
+    }
+    return LiquidationEvent(
+      symbol: (j['symbol'] ?? j['s'])?.toString() ?? '',
+      price: double.tryParse(
+              (j['price'] ?? j['p'] ?? j['ap'])?.toString() ?? '') ??
+          0,
+      quantity: double.tryParse(
+              (j['origQty'] ?? j['q'])?.toString() ?? '') ??
+          0,
+      side: (j['side'] ?? j['S'])?.toString() ?? '',
+      time: ts,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CoinLiquidationData  (coin:liquidations response)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class CoinLiquidationData {
+  final String symbol;
+  final int count;
+  final double longsRektUsd;
+  final double shortsRektUsd;
+  final List<LiquidationEvent> recentEvents;
+
+  const CoinLiquidationData({
+    required this.symbol,
+    required this.count,
+    required this.longsRektUsd,
+    required this.shortsRektUsd,
+    required this.recentEvents,
+  });
+
+  bool get isEmpty => count == 0;
+
+  String formatUsd(double v) {
+    if (v >= 1e9) return '\$${(v / 1e9).toStringAsFixed(1)}B';
+    if (v >= 1e6) return '\$${(v / 1e6).toStringAsFixed(1)}M';
+    if (v >= 1e3) return '\$${(v / 1e3).toStringAsFixed(0)}K';
+    return '\$${v.toStringAsFixed(0)}';
+  }
+
+  factory CoinLiquidationData.fromJson(Map<String, dynamic> j) =>
+      CoinLiquidationData(
+        symbol: j['symbol']?.toString() ?? '',
+        count: (j['count'] as num?)?.toInt() ?? 0,
+        longsRektUsd: (j['longsRektUsd'] as num?)?.toDouble() ?? 0,
+        shortsRektUsd: (j['shortsRektUsd'] as num?)?.toDouble() ?? 0,
+        recentEvents: (j['recentEvents'] as List?)
+                ?.whereType<Map>()
+                .map((e) =>
+                    LiquidationEvent.fromJson(Map<String, dynamic>.from(e)))
+                .toList() ??
+            [],
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // DashboardSocket  — Socket.IO client for live dashboard data
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -265,6 +430,8 @@ class DashboardSocket {
   final _klineCtrl = StreamController<KlineUpdate>.broadcast();
   final _tradeCtrl = StreamController<MarketTradeUpdate>.broadcast();
   final _connectionCtrl = StreamController<bool>.broadcast();
+  final _coinHistoryCtrl = StreamController<CoinHistoryData>.broadcast();
+  final _coinLiquidationsCtrl = StreamController<CoinLiquidationData>.broadcast();
 
   Stream<List<TickerUpdate>> get tickerStream => _tickerCtrl.stream;
   Stream<Map<String, dynamic>> get snapshotStream => _snapshotCtrl.stream;
@@ -273,6 +440,8 @@ class DashboardSocket {
   Stream<KlineUpdate> get klineStream => _klineCtrl.stream;
   Stream<MarketTradeUpdate> get tradeStream => _tradeCtrl.stream;
   Stream<bool> get connectionStream => _connectionCtrl.stream;
+  Stream<CoinHistoryData> get coinHistoryStream => _coinHistoryCtrl.stream;
+  Stream<CoinLiquidationData> get coinLiquidationsStream => _coinLiquidationsCtrl.stream;
 
   bool get isConnected => _socket?.connected ?? false;
 
@@ -341,6 +510,18 @@ class DashboardSocket {
           }
         }
       })
+      ..on('coin:history', (data) {
+        if (data is Map) {
+          _coinHistoryCtrl.add(
+              CoinHistoryData.fromJson(Map<String, dynamic>.from(data)));
+        }
+      })
+      ..on('coin:liquidations', (data) {
+        if (data is Map) {
+          _coinLiquidationsCtrl.add(
+              CoinLiquidationData.fromJson(Map<String, dynamic>.from(data)));
+        }
+      })
       ..onDisconnect((_) {
         print('[DashboardSocket] disconnected');
         _connectionCtrl.add(false);
@@ -376,6 +557,20 @@ class DashboardSocket {
     _activeChartSymbol = symbol;
     _activeInterval = interval;
     _subscribe();
+  }
+
+  void requestCoinHistory(String symbol) {
+    final sym = symbol.toUpperCase().endsWith('USDT')
+        ? symbol.toUpperCase()
+        : '${symbol.toUpperCase()}USDT';
+    _socket?.emit('coin:getHistory', {'symbol': sym});
+  }
+
+  void requestCoinLiquidations(String symbol) {
+    final sym = symbol.toUpperCase().endsWith('USDT')
+        ? symbol.toUpperCase()
+        : '${symbol.toUpperCase()}USDT';
+    _socket?.emit('coin:getLiquidations', {'symbol': sym});
   }
 
   void _parseSnapshot(Map<String, dynamic> data) {
@@ -415,5 +610,7 @@ class DashboardSocket {
     _klineCtrl.close();
     _tradeCtrl.close();
     _connectionCtrl.close();
+    _coinHistoryCtrl.close();
+    _coinLiquidationsCtrl.close();
   }
 }

@@ -9,6 +9,7 @@ import '../../core/remote/data/trade_now/models/trade_now_models.dart';
 import '../../providers/trade_now_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/selected_coin_provider.dart';
+import '../../core/widgets/coin_data_sections.dart';
 
 class TradeNowScreen extends ConsumerStatefulWidget {
   const TradeNowScreen({super.key});
@@ -117,6 +118,10 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
             const SizedBox(height: 16),
             _buildHistoricalSetups(data.history),
           ],
+          const SizedBox(height: 16),
+          CoinFundingOiCard(coin: _selectedCoin),
+          // const SizedBox(height: 16),
+          // CoinLiquidationsCard(coin: _selectedCoin),
         ],
       ],
     );
@@ -239,7 +244,7 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
                     Text(s.verdictIcon, style: const TextStyle(fontSize: 20)),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(s.verdictLabel,
+                      child: Text(s.displayVerdictLabel,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -305,11 +310,11 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
             ? AppColors.brandGreen
             : AppColors.textMuted;
 
-    final liqColor = d.liquidations.unavailable
-        ? AppColors.textMuted
-        : d.liquidations.capitalizedSide == 'Below'
-            ? AppColors.brandAmber
-            : AppColors.brandGreen;
+    // final liqColor = d.liquidations.unavailable
+    //     ? AppColors.textMuted
+    //     : d.liquidations.capitalizedSide == 'Below'
+    //         ? AppColors.brandAmber
+    //         : AppColors.brandGreen;
 
     return Column(
       children: [
@@ -345,19 +350,19 @@ class _TradeNowScreenState extends ConsumerState<TradeNowScreen> {
               badgeColor: lsBadgeColor,
               icon: Icons.people_rounded,
             )),
-            const SizedBox(width: 12),
-            Expanded(
-                child: _MetricTile(
-              label: 'Liq Wall',
-              value: d.liquidations.unavailable
-                  ? 'Unavailable'
-                  : d.liquidations.formattedWall,
-              badge: d.liquidations.unavailable
-                  ? 'No Data'
-                  : d.liquidations.capitalizedSide,
-              badgeColor: liqColor,
-              icon: Icons.local_fire_department_rounded,
-            )),
+            // const SizedBox(width: 12),
+            // Expanded(
+            //     child: _MetricTile(
+            //   label: 'Liq Wall',
+            //   value: d.liquidations.unavailable
+            //       ? 'Unavailable'
+            //       : d.liquidations.formattedWall,
+            //   badge: d.liquidations.unavailable
+            //       ? 'No Data'
+            //       : d.liquidations.capitalizedSide,
+            //   badgeColor: liqColor,
+            //   icon: Icons.local_fire_department_rounded,
+            // )),
           ],
         ),
         const SizedBox(height: 12),

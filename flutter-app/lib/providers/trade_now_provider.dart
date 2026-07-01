@@ -8,7 +8,7 @@ final _repo = TradeNowRepoImpl();
 /// Futures endpoints are guarded — a spot-only coin returns empty fallbacks
 /// instead of crashing the whole provider.
 final tradeNowProvider =
-    FutureProvider.family<TradeNowData, String>((ref, symbol) async {
+    FutureProvider.autoDispose.family<TradeNowData, String>((ref, symbol) async {
   Future<T> guard<T>(Future<T> f, T fallback) async {
     try {
       return await f;

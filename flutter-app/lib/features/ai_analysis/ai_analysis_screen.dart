@@ -13,6 +13,7 @@ import '../../providers/predictions_provider.dart';
 import '../../providers/ai_chat_provider.dart';
 import '../../providers/selected_coin_provider.dart';
 import '../../core/remote/data/predictions/models/predictions_models.dart';
+import '../../core/widgets/coin_data_sections.dart';
 
 const _coins = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE'];
 
@@ -202,6 +203,10 @@ class _AiAnalysisScreenState extends ConsumerState<AiAnalysisScreen> {
                                       a.analysis.volatilityAnalysis),
                             );
                           }),
+                          const SizedBox(height: 16),
+                          CoinFundingOiCard(coin: coin),
+                          // const SizedBox(height: 16),
+                          // CoinLiquidationsCard(coin: coin),
                           const SizedBox(height: 16),
                           Consumer(builder: (_, ref, __) {
                             final async = ref.watch(coinAiProvider(coinId));

@@ -5,6 +5,7 @@ import 'dart:async';
 import '../theme/app_colors.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/selected_coin_provider.dart';
+import '../../providers/market_memory_provider.dart';
 import '../remote/web_socket_baseclass.dart';
 
 class TopBar extends StatelessWidget {
@@ -260,6 +261,7 @@ class _SearchButton extends StatelessWidget {
   }
 
   void _showSearchOverlay(BuildContext context) {
+    final currentLocation = GoRouterState.of(context).matchedLocation;
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -274,13 +276,15 @@ class _SearchButton extends StatelessWidget {
           child: child,
         ),
       ),
-      pageBuilder: (ctx, _, __) => const _SearchDialog(),
+      pageBuilder: (ctx, _, __) =>
+          _SearchDialog(currentLocation: currentLocation),
     );
   }
 }
 
 class _SearchDialog extends ConsumerStatefulWidget {
-  const _SearchDialog({super.key});
+  final String currentLocation;
+  const _SearchDialog({super.key, required this.currentLocation});
 
   @override
   ConsumerState<_SearchDialog> createState() => _SearchDialogState();
@@ -318,8 +322,19 @@ class _SearchDialogState extends ConsumerState<_SearchDialog> {
 
   void _goToCoin(String symbol) {
     Navigator.of(context).pop();
-    ref.read(selectedCoinProvider.notifier).state = symbol.toUpperCase();
-    context.go('/trade-now');
+    final upper = symbol.toUpperCase();
+    ref.read(selectedCoinProvider.notifier).state = upper;
+
+    // Coin-specific screens: stay on current screen, they sync via selectedCoinProvider
+    const coinScreens = {'/memory', '/analysis', '/charts', '/orderbook'};
+    if (coinScreens.contains(widget.currentLocation)) {
+      if (widget.currentLocation == '/memory') {
+        ref.read(memorySymbolProvider.notifier).state = upper;
+      }
+      context.go(widget.currentLocation);
+    } else {
+      context.go('/trade-now');
+    }
   }
 
   @override
