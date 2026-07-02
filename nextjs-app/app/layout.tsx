@@ -143,6 +143,22 @@ const websiteSchema = {
   },
 };
 
+// Speakable schema — tells AI assistants and voice search which
+// page sections contain the most answer-worthy content.
+const speakableSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "@id": `${APP_URL}/#webpage`,
+  url: APP_URL,
+  name: `${BRAND} — ${TAGLINE}`,
+  isPartOf: { "@id": `${APP_URL}/#website` },
+  about: { "@id": `${APP_URL}/#organization` },
+  speakable: {
+    "@type": "SpeakableSpecification",
+    cssSelector: ["h1", "h2", "[data-speakable]"],
+  },
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
@@ -156,7 +172,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify([organizationSchema, websiteSchema]),
+            __html: JSON.stringify([organizationSchema, websiteSchema, speakableSchema]),
           }}
         />
       </head>
