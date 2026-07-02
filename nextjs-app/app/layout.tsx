@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -143,6 +144,22 @@ const websiteSchema = {
   },
 };
 
+// Speakable schema — tells AI assistants and voice search which
+// page sections contain the most answer-worthy content.
+const speakableSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "@id": `${APP_URL}/#webpage`,
+  url: APP_URL,
+  name: `${BRAND} — ${TAGLINE}`,
+  isPartOf: { "@id": `${APP_URL}/#website` },
+  about: { "@id": `${APP_URL}/#organization` },
+  speakable: {
+    "@type": "SpeakableSpecification",
+    cssSelector: ["h1", "h2", "[data-speakable]"],
+  },
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
@@ -156,13 +173,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify([organizationSchema, websiteSchema]),
+            __html: JSON.stringify([organizationSchema, websiteSchema, speakableSchema]),
           }}
         />
       </head>
       <body className="bg-bg-primary text-white antialiased overflow-x-hidden">
         {children}
         <Analytics />
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-LV1C2P4FW2"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-LV1C2P4FW2');
+          `}
+        </Script>
       </body>
     </html>
   );

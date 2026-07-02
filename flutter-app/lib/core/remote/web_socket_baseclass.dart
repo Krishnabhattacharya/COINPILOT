@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'package:socket_io_client/socket_io_client.dart' as sio;
 import '../end_points.dart';
 
@@ -26,8 +25,7 @@ class TickerUpdate {
     required this.quoteVolume,
   });
 
-  double get priceChangePercent =>
-      open > 0 ? ((close - open) / open) * 100 : 0;
+  double get priceChangePercent => open > 0 ? ((close - open) / open) * 100 : 0;
 
   factory TickerUpdate.fromJson(Map<String, dynamic> j) => TickerUpdate(
         symbol: j['symbol']?.toString() ?? '',
@@ -62,8 +60,16 @@ class LiveWhaleAlert {
   });
 
   static const _exchangeNames = {
-    'binance', 'coinbase', 'kraken', 'okx', 'bybit',
-    'huobi', 'kucoin', 'bitfinex', 'bitmex', 'gate',
+    'binance',
+    'coinbase',
+    'kraken',
+    'okx',
+    'bybit',
+    'huobi',
+    'kucoin',
+    'bitfinex',
+    'bitmex',
+    'gate',
   };
 
   bool get toExchange => _exchangeNames.contains(to.toLowerCase());
@@ -104,7 +110,8 @@ class LiveWhaleAlert {
     return LiveWhaleAlert(
       symbol: (json['symbol'] as String? ?? '').toUpperCase(),
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
-      amountUsd: (json['amount_usd'] ?? json['amountUsd'] as num?)?.toDouble() ?? 0,
+      amountUsd:
+          (json['amount_usd'] ?? json['amountUsd'] as num?)?.toDouble() ?? 0,
       from: parseName(json['from']),
       to: parseName(json['to']),
       timestamp: ts,
@@ -123,7 +130,8 @@ class LiveFundingRate {
   const LiveFundingRate({required this.symbol, required this.rate});
 
   bool get positive => rate >= 0;
-  String get formatted => '${positive ? '+' : ''}${(rate * 100).toStringAsFixed(3)}%';
+  String get formatted =>
+      '${positive ? '+' : ''}${(rate * 100).toStringAsFixed(3)}%';
   bool get isHigh => rate.abs() > 0.0004;
 
   String get interpretation {
@@ -232,16 +240,16 @@ class KlineUpdate {
         ? rawOpenTime * 1000
         : rawOpenTime;
     return KlineUpdate(
-        symbol: (j['symbol']?.toString() ?? '').toUpperCase(),
-        interval: (j['interval']?.toString() ?? '').toLowerCase(),
-        openTime: openTimeMs,
-        open: (j['open'] as num?)?.toDouble() ?? 0,
-        high: (j['high'] as num?)?.toDouble() ?? 0,
-        low: (j['low'] as num?)?.toDouble() ?? 0,
-        close: (j['close'] as num?)?.toDouble() ?? 0,
-        volume: (j['volume'] as num?)?.toDouble() ?? 0,
-        isClosed: j['isClosed'] as bool? ?? false,
-      );
+      symbol: (j['symbol']?.toString() ?? '').toUpperCase(),
+      interval: (j['interval']?.toString() ?? '').toLowerCase(),
+      openTime: openTimeMs,
+      open: (j['open'] as num?)?.toDouble() ?? 0,
+      high: (j['high'] as num?)?.toDouble() ?? 0,
+      low: (j['low'] as num?)?.toDouble() ?? 0,
+      close: (j['close'] as num?)?.toDouble() ?? 0,
+      volume: (j['volume'] as num?)?.toDouble() ?? 0,
+      isClosed: j['isClosed'] as bool? ?? false,
+    );
   }
 }
 
@@ -306,8 +314,7 @@ class CoinHistoryData {
 
   factory CoinHistoryData.fromJson(Map<String, dynamic> j) => CoinHistoryData(
         symbol: j['symbol']?.toString() ?? '',
-        fundingRate:
-            double.tryParse(j['fundingRate']?.toString() ?? '') ?? 0,
+        fundingRate: double.tryParse(j['fundingRate']?.toString() ?? '') ?? 0,
         oiHistory: (j['oiHistory'] as List?)
                 ?.whereType<Map>()
                 .map((e) => OiCandle.fromJson(Map<String, dynamic>.from(e)))
@@ -358,9 +365,8 @@ class LiquidationEvent {
       price: double.tryParse(
               (j['price'] ?? j['p'] ?? j['ap'])?.toString() ?? '') ??
           0,
-      quantity: double.tryParse(
-              (j['origQty'] ?? j['q'])?.toString() ?? '') ??
-          0,
+      quantity:
+          double.tryParse((j['origQty'] ?? j['q'])?.toString() ?? '') ?? 0,
       side: (j['side'] ?? j['S'])?.toString() ?? '',
       time: ts,
     );
@@ -431,7 +437,8 @@ class DashboardSocket {
   final _tradeCtrl = StreamController<MarketTradeUpdate>.broadcast();
   final _connectionCtrl = StreamController<bool>.broadcast();
   final _coinHistoryCtrl = StreamController<CoinHistoryData>.broadcast();
-  final _coinLiquidationsCtrl = StreamController<CoinLiquidationData>.broadcast();
+  final _coinLiquidationsCtrl =
+      StreamController<CoinLiquidationData>.broadcast();
 
   Stream<List<TickerUpdate>> get tickerStream => _tickerCtrl.stream;
   Stream<Map<String, dynamic>> get snapshotStream => _snapshotCtrl.stream;
@@ -441,14 +448,16 @@ class DashboardSocket {
   Stream<MarketTradeUpdate> get tradeStream => _tradeCtrl.stream;
   Stream<bool> get connectionStream => _connectionCtrl.stream;
   Stream<CoinHistoryData> get coinHistoryStream => _coinHistoryCtrl.stream;
-  Stream<CoinLiquidationData> get coinLiquidationsStream => _coinLiquidationsCtrl.stream;
+  Stream<CoinLiquidationData> get coinLiquidationsStream =>
+      _coinLiquidationsCtrl.stream;
 
   bool get isConnected => _socket?.connected ?? false;
 
   void connect() {
     if (_socket != null) return; // already connecting / connected
 
-    print('[DashboardSocket] Connecting to ${EndPoints.socketUrl} with path ${EndPoints.socketPath}');
+    print(
+        '[DashboardSocket] Connecting to ${EndPoints.socketUrl} with path ${EndPoints.socketPath}');
 
     _socket = sio.io(
       EndPoints.socketUrl,
@@ -476,14 +485,16 @@ class DashboardSocket {
           _snapshotCtrl.add(map);
           _parseSnapshot(map);
         } else {
-          print('[DashboardSocket] warning: snapshot payload is not a Map: $data');
+          print(
+              '[DashboardSocket] warning: snapshot payload is not a Map: $data');
         }
       })
       ..on('market:miniTicker', (data) {
         if (data is List) {
           final tickers = data
               .where((item) => item is Map)
-              .map((item) => TickerUpdate.fromJson(Map<String, dynamic>.from(item as Map)))
+              .map((item) =>
+                  TickerUpdate.fromJson(Map<String, dynamic>.from(item as Map)))
               .toList();
           if (tickers.isNotEmpty) {
             _tickerCtrl.add(tickers);
@@ -501,19 +512,21 @@ class DashboardSocket {
       })
       ..on('market:trade', (data) {
         if (data is Map) {
-          _tradeCtrl.add(MarketTradeUpdate.fromJson(Map<String, dynamic>.from(data)));
+          _tradeCtrl
+              .add(MarketTradeUpdate.fromJson(Map<String, dynamic>.from(data)));
         } else if (data is List) {
           for (final item in data) {
             if (item is Map) {
-              _tradeCtrl.add(MarketTradeUpdate.fromJson(Map<String, dynamic>.from(item as Map)));
+              _tradeCtrl.add(MarketTradeUpdate.fromJson(
+                  Map<String, dynamic>.from(item as Map)));
             }
           }
         }
       })
       ..on('coin:history', (data) {
         if (data is Map) {
-          _coinHistoryCtrl.add(
-              CoinHistoryData.fromJson(Map<String, dynamic>.from(data)));
+          _coinHistoryCtrl
+              .add(CoinHistoryData.fromJson(Map<String, dynamic>.from(data)));
         }
       })
       ..on('coin:liquidations', (data) {
@@ -535,14 +548,21 @@ class DashboardSocket {
     connect();
   }
 
-  void 
-  _subscribe() {
-    final Set<String> allSymbols = {'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'XRPUSDT', 'DOGEUSDT'};
+  void _subscribe() {
+    final Set<String> allSymbols = {
+      'BTCUSDT',
+      'ETHUSDT',
+      'SOLUSDT',
+      'BNBUSDT',
+      'XRPUSDT',
+      'DOGEUSDT'
+    };
     if (_activeChartSymbol != null && _activeChartSymbol!.isNotEmpty) {
       allSymbols.add(_activeChartSymbol!.toUpperCase());
     }
 
-    print('[DashboardSocket] Emitting subscribe for symbols: ${allSymbols.toList()} with interval $_activeInterval');
+    print(
+        '[DashboardSocket] Emitting subscribe for symbols: ${allSymbols.toList()} with interval $_activeInterval');
     _socket?.emit('dashboard:subscribe', {
       'symbols': allSymbols.toList(),
       'klineInterval': _activeInterval,
@@ -579,7 +599,8 @@ class DashboardSocket {
         final list = data['whaleAlerts'] as List;
         final alerts = list
             .where((item) => item is Map)
-            .map((item) => LiveWhaleAlert.fromJson(Map<String, dynamic>.from(item as Map)))
+            .map((item) =>
+                LiveWhaleAlert.fromJson(Map<String, dynamic>.from(item as Map)))
             .toList();
         _whaleCtrl.add(alerts);
       }
@@ -587,7 +608,8 @@ class DashboardSocket {
         final list = data['fundingRates'] as List;
         final rates = list
             .where((item) => item is Map)
-            .map((item) => LiveFundingRate.fromJson(Map<String, dynamic>.from(item as Map)))
+            .map((item) => LiveFundingRate.fromJson(
+                Map<String, dynamic>.from(item as Map)))
             .toList();
         _fundingCtrl.add(rates);
       }
